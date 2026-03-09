@@ -1,5 +1,4 @@
 // 情绪统计图表组件
-import React from 'react'
 import {
   BarChart,
   Bar,

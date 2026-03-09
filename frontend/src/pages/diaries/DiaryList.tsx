@@ -5,6 +5,7 @@ import { useDiaryStore } from '@/store/diaryStore'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Loading } from '@/components/common/Loading'
+import { toast } from '@/components/ui/toast'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 
@@ -22,7 +23,7 @@ export default function DiaryList() {
       try {
         await deleteDiary(id)
       } catch (error) {
-        alert('删除失败')
+        toast('删除失败', 'error')
       }
     }
   }

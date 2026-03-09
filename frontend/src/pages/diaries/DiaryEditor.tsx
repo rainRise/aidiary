@@ -1,25 +1,12 @@
-// 日记编辑器页面
+// 日记编辑器 - Apple风格
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDiaryStore } from '@/store/diaryStore'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loading } from '@/components/common/Loading'
+import { toast } from '@/components/ui/toast'
 
 const PRESET_EMOTIONS = [
-  '开心',
-  '平静',
-  '焦虑',
-  '成就感',
-  '满足',
-  '担忧',
-  '期待',
-  '疲惫',
-  '感动',
-  '愤怒',
-  '悲伤',
-  '兴奋',
+  '开心', '平静', '焦虑', '成就感', '满足', '担忧',
+  '期待', '疲惫', '感动', '愤怒', '悲伤', '兴奋',
 ]
 
 export default function DiaryEditor() {
@@ -42,7 +29,7 @@ export default function DiaryEditor() {
     e.preventDefault()
 
     if (!title.trim() || !content.trim()) {
-      alert('请填写标题和内容')
+      toast('请填写标题和内容', 'error')
       return
     }
 
@@ -55,161 +42,135 @@ export default function DiaryEditor() {
         importanceScore,
       })
 
-      alert('日记保存成功！')
+      toast('日记保存成功', 'success')
       navigate(`/diaries/${diary.id}`)
     } catch (error: any) {
-      alert(error.message || '保存失败')
+      toast(error.message || '保存失败', 'error')
     }
   }
 
   const wordCount = content.length
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+    <div className="min-h-screen bg-background">
       {/* 顶部导航 */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <Button variant="ghost" onClick={() => navigate('/diaries')}>
-              ← 取消
-            </Button>
-            <h1 className="text-xl font-bold">写日记</h1>
-            <Button onClick={handleSubmit} disabled={isLoading}>
-              {isLoading ? <Loading size="sm" /> : '保存'}
-            </Button>
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-white/[0.06]">
+        <div className="max-w-3xl mx-auto px-6">
+          <div className="flex justify-between items-center h-14">
+            <button
+              onClick={() => navigate(-1)}
+              className="text-sm text-white/40 hover:text-white/70 transition-colors"
+            >
+              ← 返回
+            </button>
+            <span className="text-sm font-medium text-white/70">写日记</span>
+            <button
+              onClick={handleSubmit}
+              disabled={isLoading}
+              className="h-8 px-4 rounded-lg text-xs font-medium bg-primary hover:bg-primary/90 text-white disabled:opacity-50 transition-all active:scale-[0.97]"
+            >
+              {isLoading ? (
+                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : '保存'}
+            </button>
           </div>
         </div>
       </header>
 
-      {/* 主内容 */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-3xl mx-auto px-6 py-8 space-y-6">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 基本信息 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>基本信息</CardTitle>
-              <CardDescription>为你的日记添加一些基本信息</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* 标题 */}
-              <div className="space-y-2">
-                <label htmlFor="title" className="text-sm font-medium">
-                  标题 *
-                </label>
-                <Input
-                  id="title"
-                  type="text"
-                  placeholder="给今天的日记起个标题"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* 日期 */}
-              <div className="space-y-2">
-                <label htmlFor="date" className="text-sm font-medium">
-                  日期
-                </label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={diaryDate}
-                  onChange={(e) => setDiaryDate(e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          {/* 标题与日期 */}
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="日记标题"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-transparent text-2xl font-bold text-white/90 placeholder:text-white/15 outline-none border-none"
+              required
+            />
+            <input
+              type="date"
+              value={diaryDate}
+              onChange={(e) => setDiaryDate(e.target.value)}
+              className="h-9 px-3 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/60 text-xs outline-none focus:border-primary/50 [color-scheme:dark]"
+            />
+          </div>
 
           {/* 日记内容 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>日记内容</CardTitle>
-              <CardDescription>记录你的想法和感受</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="今天发生了什么？你有什么感受？"
-                className="w-full min-h-[400px] p-4 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                required
-              />
-              <div className="mt-2 text-sm text-muted-foreground text-right">
-                {wordCount} 字
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] overflow-hidden">
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="今天发生了什么？你有什么感受？&#10;&#10;在这里自由书写..."
+              className="w-full min-h-[380px] p-5 bg-transparent text-white/80 text-sm leading-relaxed placeholder:text-white/15 outline-none resize-none"
+              required
+            />
+            <div className="px-5 py-3 border-t border-white/[0.04] flex justify-between items-center">
+              <span className="text-[11px] text-white/20">{wordCount} 字</span>
+            </div>
+          </div>
 
           {/* 情绪标签 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>情绪标签</CardTitle>
-              <CardDescription>选择你此刻的心情（可多选）</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {PRESET_EMOTIONS.map((emotion) => (
-                  <button
-                    key={emotion}
-                    type="button"
-                    onClick={() => toggleEmotionTag(emotion)}
-                    className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                      emotionTags.includes(emotion)
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                    }`}
-                  >
-                    {emotion}
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-5">
+            <h3 className="text-xs font-medium text-white/50 uppercase tracking-wider mb-3">心情标签</h3>
+            <div className="flex flex-wrap gap-2">
+              {PRESET_EMOTIONS.map((emotion) => (
+                <button
+                  key={emotion}
+                  type="button"
+                  onClick={() => toggleEmotionTag(emotion)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+                    emotionTags.includes(emotion)
+                      ? 'bg-primary/20 text-primary border border-primary/30'
+                      : 'bg-white/[0.04] text-white/40 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white/60'
+                  }`}
+                >
+                  {emotion}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* 重要性评分 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>重要性评分</CardTitle>
-              <CardDescription>这件事对你有多重要？</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    value={importanceScore}
-                    onChange={(e) => setImportanceScore(parseInt(e.target.value))}
-                    className="flex-1"
-                  />
-                  <span className="text-2xl font-bold text-primary min-w-[3rem] text-center">
-                    {importanceScore}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground px-1">
-                  <span>不重要</span>
-                  <span>一般</span>
-                  <span>非常重要</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-5">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xs font-medium text-white/50 uppercase tracking-wider">重要性</h3>
+              <span className="text-lg font-bold text-primary">{importanceScore}</span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="10"
+              value={importanceScore}
+              onChange={(e) => setImportanceScore(parseInt(e.target.value))}
+              className="w-full h-1 appearance-none bg-white/10 rounded-full outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-lg"
+            />
+            <div className="flex justify-between text-[10px] text-white/20 mt-2 px-0.5">
+              <span>随意</span>
+              <span>一般</span>
+              <span>重要</span>
+            </div>
+          </div>
 
-          {/* 操作按钮 */}
-          <div className="flex gap-4">
-            <Button
+          {/* 底部操作 */}
+          <div className="flex gap-3 pb-8">
+            <button
               type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={() => navigate('/diaries')}
+              onClick={() => navigate(-1)}
+              className="flex-1 h-12 rounded-xl text-sm font-medium bg-white/[0.04] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] transition-all active:scale-[0.98]"
             >
               取消
-            </Button>
-            <Button type="submit" className="flex-1" disabled={isLoading}>
-              {isLoading ? <Loading size="sm" /> : '保存日记'}
-            </Button>
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex-1 h-12 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90 text-white disabled:opacity-50 transition-all active:scale-[0.98]"
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
+              ) : '保存日记'}
+            </button>
           </div>
         </form>
       </main>

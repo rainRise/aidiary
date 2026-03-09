@@ -240,6 +240,41 @@ class AuthService:
 
         return True, "登录成功", user
 
+    async def login_with_password(
+        self,
+        db: AsyncSession,
+        email: str,
+        password: str
+    ) -> Tuple[bool, str, Optional[User]]:
+        """
+        用户密码登录
+
+        Args:
+            db: 数据库会话
+            email: 邮箱地址
+            password: 密码
+
+        Returns:
+            Tuple[bool, str, Optional[User]]: (是否成功, 消息, 用户对象)
+        """
+        # 查找用户
+        result = await db.execute(
+            select(User).where(User.email == email)
+        )
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return False, "邮箱或密码错误", None
+
+        if not user.is_active:
+            return False, "用户已被禁用", None
+
+        # 验证密码
+        if not verify_password(password, user.password_hash):
+            return False, "邮箱或密码错误", None
+
+        return True, "登录成功", user
+
     def create_token(self, user: User) -> str:
         """
         创建访问令牌

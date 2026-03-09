@@ -6,6 +6,7 @@ import { diaryService } from '@/services/diary.service'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loading } from '@/components/common/Loading'
+import { toast } from '@/components/ui/toast'
 import type { AnalysisResponse, Diary } from '@/types'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
@@ -75,7 +76,7 @@ export default function AnalysisResult() {
 
   const copyPost = (content: string) => {
     navigator.clipboard.writeText(content)
-    alert('已复制到剪贴板')
+    toast('已复制到剪贴板', 'success')
   }
 
   if (isLoading) {
@@ -128,7 +129,7 @@ export default function AnalysisResult() {
             <CardContent>
               <p className="text-muted-foreground line-clamp-3">{diary.content}</p>
               <div className="flex gap-2 mt-4">
-                {diary.emotion_tags.map((tag, index) => (
+                {diary.emotion_tags.map((tag: string, index: number) => (
                   <span
                     key={index}
                     className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full"
@@ -252,7 +253,7 @@ export default function AnalysisResult() {
                           <label className="text-sm text-muted-foreground">非理性信念</label>
                           <ul className="mt-1 space-y-1">
                             {analysis.satir_analysis.cognitive_layer.irrational_beliefs.map(
-                              (belief, index) => (
+                              (belief: string, index: number) => (
                                 <li key={index} className="text-lg">
                                   • {belief}
                                 </li>
@@ -271,7 +272,7 @@ export default function AnalysisResult() {
                           <label className="text-sm text-muted-foreground">核心信念</label>
                           <ul className="mt-1 space-y-1">
                             {analysis.satir_analysis.belief_layer.core_beliefs.map(
-                              (belief, index) => (
+                              (belief: string, index: number) => (
                                 <li key={index} className="text-lg">
                                   • {belief}
                                 </li>
@@ -321,7 +322,7 @@ export default function AnalysisResult() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {analysis.social_posts.map((post, index) => (
+                    {analysis.social_posts.map((post: any, index: number) => (
                       <div
                         key={index}
                         className="p-4 border rounded-lg hover:bg-accent transition-colors"

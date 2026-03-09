@@ -25,9 +25,11 @@ class DiaryCreate(BaseModel):
 
     @field_validator('content')
     @classmethod
-    def calculate_word_count(cls, v):
-        """自动计算字数"""
-        return len(v)
+    def validate_content(cls, v):
+        """验证内容不为空"""
+        if not v or not v.strip():
+            raise ValueError('日记内容不能为空')
+        return v
 
 
 class DiaryUpdate(BaseModel):

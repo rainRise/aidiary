@@ -13,6 +13,7 @@ interface AuthState {
 
   // Actions
   login: (email: string, code: string) => Promise<void>
+  loginWithPassword: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, code: string, username?: string) => Promise<void>
   logout: () => Promise<void>
   checkAuth: () => Promise<void>
@@ -38,7 +39,26 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false,
           })
-          // 保存token到localStorage
+          localStorage.setItem('access_token', response.access_token)
+        } catch (error: any) {
+          set({
+            error: error.response?.data?.detail || '登录失败',
+            isLoading: false,
+          })
+          throw error
+        }
+      },
+
+      loginWithPassword: async (email: string, password: string) => {
+        set({ isLoading: true, error: null })
+        try {
+          const response = await authService.loginWithPassword(email, password)
+          set({
+            user: response.user,
+            token: response.access_token,
+            isAuthenticated: true,
+            isLoading: false,
+          })
           localStorage.setItem('access_token', response.access_token)
         } catch (error: any) {
           set({

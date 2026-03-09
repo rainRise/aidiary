@@ -10,6 +10,7 @@ from app.schemas.auth import (
     VerifyCodeRequest,
     RegisterRequest,
     LoginRequest,
+    PasswordLoginRequest,
     TokenResponse,
     UserResponse
 )
@@ -174,6 +175,38 @@ async def login(
         )
 
     # 创建访问令牌
+    access_token = auth_service.create_token(user)
+
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=UserResponse.model_validate(user)
+    )
+
+
+@router.post("/login/password", summary="密码登录")
+async def login_with_password(
+    request: PasswordLoginRequest,
+    db: AsyncSession = Depends(get_db)
+) -> TokenResponse:
+    """
+    用户密码登录
+
+    - **email**: 邮箱地址
+    - **password**: 密码
+
+    返回访问令牌和用户信息
+    """
+    success, message, user = await auth_service.login_with_password(
+        db, request.email, request.password
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+
     access_token = auth_service.create_token(user)
 
     return TokenResponse(

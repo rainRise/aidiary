@@ -55,7 +55,7 @@ export default function Timeline() {
 
             {/* 时间轴事件 */}
             <div className="space-y-8">
-              {timelineEvents.map((event, index) => (
+              {timelineEvents.map((event) => (
                 <div key={event.id} className="relative pl-16">
                   {/* 时间点 */}
                   <div className="absolute left-6 w-4 h-4 bg-primary rounded-full border-4 border-white shadow" />

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { toast } from '@/components/ui/toast'
 
 const MBTI_TYPES = [
   'INTJ', 'INTP', 'ENTJ', 'ENTP',
@@ -69,7 +70,7 @@ export default function ProfileSettings() {
     await new Promise(resolve => setTimeout(resolve, 1000))
 
     setIsSaving(false)
-    alert('画像设置已保存！')
+    toast('画像设置已保存', 'success')
     navigate('/')
   }
 

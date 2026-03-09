@@ -15,9 +15,15 @@ export const authService = {
     return response.data
   },
 
-  // 登录
+  // 验证码登录
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>('/api/v1/auth/login', data)
+    return response.data
+  },
+
+  // 密码登录
+  loginWithPassword: async (email: string, password: string): Promise<LoginResponse> => {
+    const response = await api.post<LoginResponse>('/api/v1/auth/login/password', { email, password })
     return response.data
   },
 

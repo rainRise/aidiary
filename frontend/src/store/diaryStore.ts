@@ -39,7 +39,7 @@ interface DiaryState {
   clearError: () => void
 }
 
-export const useDiaryStore = create<DiaryState>((set, get) => ({
+export const useDiaryStore = create<DiaryState>((set, _get) => ({
   diaries: [],
   currentDiary: null,
   timelineEvents: [],

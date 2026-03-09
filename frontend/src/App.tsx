@@ -2,6 +2,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
+import { ToastProvider } from '@/components/ui/toast'
 import LoginPage from '@/pages/auth/LoginPage'
 import RegisterPage from '@/pages/auth/RegisterPage'
 
@@ -54,6 +55,7 @@ function App() {
   }, [checkAuth])
 
   return (
+    <ToastProvider>
     <BrowserRouter>
       <Suspense
         fallback={
@@ -144,6 +146,7 @@ function App() {
         </Routes>
       </Suspense>
     </BrowserRouter>
+    </ToastProvider>
   )
 }
 

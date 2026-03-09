@@ -29,9 +29,15 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    """登录请求"""
+    """登录请求（验证码登录）"""
     email: EmailStr = Field(..., description="邮箱地址")
     code: str = Field(..., min_length=6, max_length=6, description="6位验证码")
+
+
+class PasswordLoginRequest(BaseModel):
+    """密码登录请求"""
+    email: EmailStr = Field(..., description="邮箱地址")
+    password: str = Field(..., min_length=6, max_length=50, description="密码")
 
 
 class TokenResponse(BaseModel):
