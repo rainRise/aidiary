@@ -64,3 +64,7 @@ class ErrorResponse(BaseModel):
     """错误响应"""
     error: str = Field(..., description="错误消息")
     detail: Optional[str] = Field(None, description="详细错误信息")
+
+
+# 重建模型以解决前向引用问题
+TokenResponse.model_rebuild()
