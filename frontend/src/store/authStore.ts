@@ -58,7 +58,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null })
         try {
           await authService.verifyRegisterCode({ email, code, type: 'register' })
-          await authService.register({ email, password, username })
+          await authService.register({ email, password, username, code })
           set({ isLoading: false })
         } catch (error: any) {
           set({
