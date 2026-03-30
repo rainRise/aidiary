@@ -42,7 +42,7 @@ const IMAGE_TRANSFORMER: ElementTransformer = {
   },
 }
 
-const MARKDOWN_TRANSFORMERS = [IMAGE_TRANSFORMER, ...TRANSFORMERS]
+const STORAGE_TRANSFORMERS = [IMAGE_TRANSFORMER, ...TRANSFORMERS]
 
 // ---- Toolbar button ----
 function ToolbarBtn({
@@ -242,7 +242,7 @@ function InitialValuePlugin({ value }: { value: string }) {
     if (initialized.current || !value) return
     initialized.current = true
     editor.update(() => {
-      $convertFromMarkdownString(value, MARKDOWN_TRANSFORMERS)
+      $convertFromMarkdownString(value, STORAGE_TRANSFORMERS)
     })
   }, [editor, value])
 
@@ -316,7 +316,7 @@ export default function RichTextEditor({
     (editorState: EditorState, editor: LexicalEditor) => {
       editorState.read(() => {
         const root = $getRoot()
-        const markdown = $convertToMarkdownString(MARKDOWN_TRANSFORMERS)
+        const markdown = $convertToMarkdownString(STORAGE_TRANSFORMERS)
         const html = $generateHtmlFromNodes(editor)
         const plainText = root.getTextContent()
         onChange(markdown || plainText, html)
@@ -364,7 +364,7 @@ export default function RichTextEditor({
             ErrorBoundary={ErrorBoundary}
           />
           <HistoryPlugin />
-          <MarkdownShortcutPlugin transformers={MARKDOWN_TRANSFORMERS} />
+          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
           <OnChangePlugin onChange={handleChange} />
           <InitialValuePlugin value={value} />
           <SlashCommandPlugin
