@@ -242,6 +242,15 @@ const theme = {
     underline: 'underline',
   },
   paragraph: 'mb-1',
+  heading: {
+    h1: 'text-2xl font-bold text-stone-700 mt-3 mb-2',
+    h2: 'text-xl font-bold text-stone-700 mt-3 mb-2',
+    h3: 'text-lg font-semibold text-stone-700 mt-2 mb-1.5',
+    h4: 'text-base font-semibold text-stone-700 mt-2 mb-1.5',
+    h5: 'text-sm font-semibold text-stone-700 mt-1.5 mb-1',
+    h6: 'text-sm font-medium text-stone-600 mt-1.5 mb-1',
+  },
+  quote: 'border-l-4 border-rose-200 pl-3 text-stone-500 italic my-2',
 }
 
 function ErrorBoundary({ children }: { children: React.ReactNode }) {
