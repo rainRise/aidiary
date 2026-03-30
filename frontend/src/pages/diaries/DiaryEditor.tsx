@@ -46,6 +46,7 @@ export default function DiaryEditor() {
   const [emotionTags, setEmotionTags] = useState<string[]>([])
   const [importanceScore, setImportanceScore] = useState(5)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false)
 
   // 每日引导问题
   const guidedQuestion = GUIDED_QUESTIONS[new Date().getDate() % GUIDED_QUESTIONS.length]
@@ -91,6 +92,23 @@ export default function DiaryEditor() {
     }
   }
 
+  const handleGenerateTitle = async () => {
+    if (!content.trim() || content.trim().length < 10) {
+      toast('先写几句内容，AI 才能更懂你', 'error')
+      return
+    }
+    try {
+      setIsGeneratingTitle(true)
+      const result = await aiService.generateTitle(content, title)
+      setTitle(result.title)
+      toast('已生成标题', 'success')
+    } catch (error: any) {
+      toast(error?.response?.data?.detail || '生成标题失败', 'error')
+    } finally {
+      setIsGeneratingTitle(false)
+    }
+  }
+
   const wordCount = content.length
   const importanceLabels = ['', '随意', '', '', '一般', '', '', '', '重要', '', '非常重要']
 
@@ -125,13 +143,26 @@ export default function DiaryEditor() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* 标题与日期 */}
           <div className="card-warm p-6 space-y-4">
-            <input
-              type="text"
-              placeholder="给今天起个标题..."
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-transparent text-xl font-bold text-stone-700 placeholder:text-stone-200 outline-none border-none"
-            />
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                placeholder="给今天起个标题..."
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="flex-1 bg-transparent text-xl font-bold text-stone-700 placeholder:text-stone-200 outline-none border-none"
+              />
+              <button
+                type="button"
+                onClick={handleGenerateTitle}
+                disabled={isGeneratingTitle || !content.trim()}
+                className="h-9 px-4 rounded-xl text-xs font-semibold text-white shadow-sm transition-all active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: 'linear-gradient(135deg, #f97393, #a78bfa)' }}
+              >
+                {isGeneratingTitle
+                  ? <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  : 'AI 起题'}
+              </button>
+            </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-stone-300" />
               <input

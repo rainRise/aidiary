@@ -57,4 +57,13 @@ export const aiService = {
     const response = await api.get('/api/v1/ai/models')
     return response.data
   },
+
+  // 根据内容生成标题
+  generateTitle: async (content: string, currentTitle?: string): Promise<{ title: string }> => {
+    const response = await api.post<{ title: string }>('/api/v1/ai/generate-title', {
+      content,
+      current_title: currentTitle,
+    })
+    return response.data
+  },
 }

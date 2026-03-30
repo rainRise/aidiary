@@ -7,14 +7,65 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.db import get_db
-from app.schemas.ai import AnalysisRequest, AnalysisResponse
+from app.schemas.ai import (
+    AnalysisRequest,
+    AnalysisResponse,
+    TitleSuggestionRequest,
+    TitleSuggestionResponse,
+)
 from app.agents.orchestrator import agent_orchestrator
+from app.agents.llm import deepseek_client
 from app.core.deps import get_current_active_user
 from app.models.database import User
 from app.models.diary import Diary
 from app.services.diary_service import diary_service, timeline_service
 
 router = APIRouter(prefix="/ai", tags=["AI分析"])
+
+
+@router.post("/generate-title", response_model=TitleSuggestionResponse, summary="AI生成日记标题")
+async def generate_title(
+    request: TitleSuggestionRequest,
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    根据日记内容生成简洁、有画面感的中文标题
+    """
+    content = (request.content or "").strip()
+    if len(content) < 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="内容太短，请至少输入10个字后再生成标题"
+        )
+
+    system_prompt = (
+        "你是资深中文编辑。请为日记生成1个有品位的标题。"
+        "要求：10字以内；简洁自然；避免鸡汤口号；避免引号和表情；只返回标题本身。"
+    )
+    user_prompt = (
+        f"当前标题（可为空）：{request.current_title or '无'}\n"
+        f"日记内容：\n{content[:2000]}"
+    )
+
+    try:
+        raw = await deepseek_client.chat_with_system(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            temperature=0.7,
+        )
+        title = (raw or "").strip().replace("\n", " ")
+        if "：" in title:
+            title = title.split("：", 1)[-1].strip()
+        if len(title) > 20:
+            title = title[:20].strip()
+        if not title:
+            title = "今日片段"
+        return TitleSuggestionResponse(title=title)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"标题生成失败: {str(e)}"
+        )
 
 
 @router.post("/analyze", response_model=AnalysisResponse, summary="分析日记（异步）")

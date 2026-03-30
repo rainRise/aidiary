@@ -10,6 +10,16 @@ class AnalysisRequest(BaseModel):
     """分析请求"""
     diary_id: int = Field(..., description="日记ID")
 
+class TitleSuggestionRequest(BaseModel):
+    """标题生成请求"""
+    content: str = Field(..., min_length=10, max_length=10000, description="日记内容")
+    current_title: Optional[str] = Field(default=None, max_length=200, description="当前标题")
+
+
+class TitleSuggestionResponse(BaseModel):
+    """标题生成响应"""
+    title: str = Field(..., description="推荐标题")
+
 
 class AnalysisResponse(BaseModel):
     """分析响应"""
