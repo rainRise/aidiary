@@ -1,11 +1,12 @@
 // 日记编辑器 - 温暖柔和心理日记风格
-import { useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useCallback, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useDiaryStore } from '@/store/diaryStore'
 import { toast } from '@/components/ui/toast'
 import { PenLine, Calendar, MessageCircle, Star, Smile, CloudSun, AlertCircle, Trophy, HeartHandshake, HelpCircle, Sparkles, Battery, Heart, Angry, Frown, PartyPopper, ChevronRight } from 'lucide-react'
 import RichTextEditor from '@/components/editor/RichTextEditor'
 import { aiService } from '@/services/ai.service'
+import { diaryService } from '@/services/diary.service'
 
 const PRESET_EMOTIONS = [
   { label: '开心', icon: <Smile className="w-3.5 h-3.5" /> },
@@ -37,8 +38,10 @@ const GUIDED_QUESTIONS = [
 ]
 
 export default function DiaryEditor() {
+  const { id } = useParams<{ id: string }>()
+  const isEditMode = Boolean(id)
   const navigate = useNavigate()
-  const { createDiary, isLoading } = useDiaryStore()
+  const { createDiary, updateDiary, isLoading } = useDiaryStore()
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -47,6 +50,28 @@ export default function DiaryEditor() {
   const [importanceScore, setImportanceScore] = useState(5)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(false)
+
+  useEffect(() => {
+    const init = async () => {
+      if (!isEditMode || !id) return
+      try {
+        setIsInitializing(true)
+        const diary = await diaryService.get(Number(id))
+        setTitle(diary.title || '')
+        setContent(diary.content || '')
+        setDiaryDate(diary.diary_date || new Date().toISOString().split('T')[0])
+        setEmotionTags(diary.emotion_tags || [])
+        setImportanceScore(diary.importance_score || 5)
+      } catch (error: any) {
+        toast(error?.response?.data?.detail || '加载日记失败', 'error')
+        navigate('/diaries')
+      } finally {
+        setIsInitializing(false)
+      }
+    }
+    init()
+  }, [id, isEditMode, navigate])
 
   // 每日引导问题
   const guidedQuestion = GUIDED_QUESTIONS[new Date().getDate() % GUIDED_QUESTIONS.length]
@@ -68,25 +93,37 @@ export default function DiaryEditor() {
       return
     }
     try {
-      const diary = await createDiary({
-        title: title.trim(),
-        content: content.trim(),
-        diaryDate,
-        emotionTags: emotionTags.length > 0 ? emotionTags : undefined,
-        importanceScore,
-      })
-      toast('日记保存成功', 'success')
-      // 后台自动触发AI分析
-      setIsAnalyzing(true)
-      aiService.analyze({ diary_id: diary.id })
-        .then(() => {
-          toast('AI 分析已完成', 'success')
+      if (isEditMode && id) {
+        await updateDiary(Number(id), {
+          title: title.trim(),
+          content: content.trim(),
+          diary_date: diaryDate,
+          emotion_tags: emotionTags.length > 0 ? emotionTags : [],
+          importance_score: importanceScore,
+        } as any)
+        toast('日记更新成功', 'success')
+        navigate(`/diaries/${id}`)
+      } else {
+        const diary = await createDiary({
+          title: title.trim(),
+          content: content.trim(),
+          diaryDate,
+          emotionTags: emotionTags.length > 0 ? emotionTags : undefined,
+          importanceScore,
         })
-        .catch(() => {
-          // 静默失败，用户可以手动触发
-        })
-        .finally(() => setIsAnalyzing(false))
-      navigate(`/diaries/${diary.id}`)
+        toast('日记保存成功', 'success')
+        // 后台自动触发AI分析
+        setIsAnalyzing(true)
+        aiService.analyze({ diary_id: diary.id })
+          .then(() => {
+            toast('AI 分析已完成', 'success')
+          })
+          .catch(() => {
+            // 静默失败，用户可以手动触发
+          })
+          .finally(() => setIsAnalyzing(false))
+        navigate(`/diaries/${diary.id}`)
+      }
     } catch (error: any) {
       toast(error.message || '保存失败', 'error')
     }
@@ -127,19 +164,22 @@ export default function DiaryEditor() {
             <span className="text-sm font-semibold text-stone-600 flex items-center gap-1.5"><PenLine className="w-4 h-4 text-[#b56f61]" /> 写日记</span>
             <button
               onClick={handleSubmit}
-              disabled={isLoading}
+              disabled={isLoading || isInitializing}
               className="h-8 px-4 rounded-xl text-xs font-semibold text-white disabled:opacity-50 transition-all active:scale-[0.97] shadow-sm"
               style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
             >
               {isLoading || isAnalyzing
                 ? <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                : '保存'}
+                : isEditMode ? '更新' : '保存'}
             </button>
           </div>
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-6 py-8">
+        {isInitializing ? (
+          <div className="card-warm p-8 text-center text-stone-400 text-sm">正在加载日记...</div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* 标题与日期 */}
           <div className="card-warm p-6 space-y-4">
@@ -283,10 +323,11 @@ export default function DiaryEditor() {
             >
               {isLoading
                 ? <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin mx-auto" />
-                : '保存日记'}
+                : isEditMode ? '保存修改' : '保存日记'}
             </button>
           </div>
         </form>
+        )}
       </main>
     </div>
   )

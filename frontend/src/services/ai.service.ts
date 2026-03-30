@@ -41,10 +41,21 @@ export const aiService = {
     page?: number
     page_size?: number
   }): Promise<{
-    items: AnalysisResponse[]
+    analyses: Array<{
+      id: number
+      diary_id: number
+      updated_at: string
+      metadata: Record<string, any>
+    }>
     total: number
   }> => {
     const response = await api.get('/api/v1/ai/analyses', { params })
+    return response.data
+  },
+
+  // 获取指定日记的最近分析结果
+  getResultByDiary: async (diaryId: number): Promise<AnalysisResponse> => {
+    const response = await api.get<AnalysisResponse>(`/api/v1/ai/result/${diaryId}`)
     return response.data
   },
 

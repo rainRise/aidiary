@@ -117,6 +117,14 @@ function App() {
             }
           />
           <Route
+            path="/diaries/:id/edit"
+            element={
+              <PrivateRoute>
+                <DiaryEditor />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/timeline"
             element={
               <PrivateRoute>

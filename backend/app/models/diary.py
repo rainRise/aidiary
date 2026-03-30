@@ -97,3 +97,36 @@ class TimelineEvent(Base):
 
     def __repr__(self) -> str:
         return f"<TimelineEvent(id={self.id}, summary={self.event_summary}, date={self.event_date})>"
+
+
+class AIAnalysis(Base):
+    """AI分析结果表（按日记维度保存最近一次结果）"""
+    __tablename__ = "ai_analyses"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    diary_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("diaries.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        unique=True
+    )
+    result_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now()
+    )
+
+    def __repr__(self) -> str:
+        return f"<AIAnalysis(id={self.id}, diary_id={self.diary_id})>"

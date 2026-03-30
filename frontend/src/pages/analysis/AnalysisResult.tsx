@@ -35,6 +35,14 @@ export default function AnalysisResult() {
     try {
       const diaryData = await diaryService.get(diaryId)
       setDiary(diaryData)
+      if (diaryData.is_analyzed) {
+        try {
+          const saved = await aiService.getResultByDiary(diaryId)
+          setAnalysis(saved)
+        } catch {
+          // 已分析但无已保存结果时，允许手动重新分析
+        }
+      }
     } catch (err: any) {
       setError(err.message || '加载数据失败')
     } finally {
@@ -44,6 +52,15 @@ export default function AnalysisResult() {
 
   const handleAnalyze = async () => {
     if (!id) return
+    if (diary?.is_analyzed && !analysis) {
+      try {
+        const saved = await aiService.getResultByDiary(Number(id))
+        setAnalysis(saved)
+        return
+      } catch {
+        // 没有保存结果时再走重新分析
+      }
+    }
     setIsAnalyzing(true)
     setError(null)
     try {
@@ -154,7 +171,7 @@ export default function AnalysisResult() {
               className="h-11 px-8 rounded-2xl text-sm font-semibold text-white shadow-md transition-all active:scale-[0.97]"
               style={gradientBtn}
             >
-              {diary?.is_analyzed ? '查看分析结果' : '开始 AI 分析'}
+              {diary?.is_analyzed ? (analysis ? '重新分析' : '查看分析结果') : '开始 AI 分析'}
             </button>
           </div>
         )}

@@ -53,13 +53,16 @@ def _parse_json_payload(raw: str) -> Dict[str, Any]:
         except json.JSONDecodeError:
             pass
 
-    # 3) 提取第一个 JSON 对象
-    obj_match = re.search(r"\{[\s\S]*\}", text)
-    if obj_match:
-        candidate = obj_match.group(0)
-        obj = json.loads(candidate)
-        if isinstance(obj, dict):
-            return obj
+    # 3) 使用 JSONDecoder 从第一个 '{' 位置增量解码，忽略后续附加文本
+    decoder = json.JSONDecoder()
+    first_brace = text.find("{")
+    if first_brace != -1:
+        try:
+            obj, _idx = decoder.raw_decode(text[first_brace:])
+            if isinstance(obj, dict):
+                return obj
+        except json.JSONDecodeError:
+            pass
 
     raise ValueError(f"无法从LLM响应中解析JSON: {text[:240]}")
 

@@ -18,7 +18,7 @@ from app.agents.orchestrator import agent_orchestrator
 from app.agents.llm import deepseek_client
 from app.core.deps import get_current_active_user
 from app.models.database import User
-from app.models.diary import Diary, TimelineEvent
+from app.models.diary import Diary, TimelineEvent, AIAnalysis
 from app.schemas.diary import TimelineEventCreate
 from app.services.diary_service import diary_service, timeline_service
 
@@ -261,6 +261,34 @@ async def analyze_diary(
         }
         result["metadata"]["analyzed_diary_ids"] = [d.id for d in diaries_sorted]
 
+        # 持久化分析结果（供“查看分析结果”直接读取，避免重复运行）
+        try:
+            target_diary = anchor_diary or diaries_sorted[-1]
+            analysis_result_for_save = dict(result)
+            analysis_result_for_save.setdefault("metadata", {})
+            analysis_result_for_save["metadata"]["saved_for_diary_id"] = target_diary.id
+
+            existing_analysis_result = await db.execute(
+                select(AIAnalysis).where(
+                    AIAnalysis.user_id == current_user.id,
+                    AIAnalysis.diary_id == target_diary.id
+                ).limit(1)
+            )
+            existing_analysis = existing_analysis_result.scalar_one_or_none()
+            if existing_analysis:
+                existing_analysis.result_json = analysis_result_for_save
+            else:
+                db.add(AIAnalysis(
+                    user_id=current_user.id,
+                    diary_id=target_diary.id,
+                    result_json=analysis_result_for_save
+                ))
+            await db.commit()
+        except Exception as save_result_err:
+            await db.rollback()
+            result.setdefault("metadata", {})
+            result["metadata"]["result_save_warning"] = str(save_result_err)
+
         return result
 
     except Exception as e:
@@ -298,15 +326,48 @@ async def get_analyses(
     """
     获取用户的历史分析记录
     """
-    # 简化实现：从ai_analyses表查询
-    # 实际应该创建ai_analyses表来存储分析历史
-
-    # 暂时返回空列表
+    result = await db.execute(
+        select(AIAnalysis).where(
+            AIAnalysis.user_id == current_user.id
+        ).order_by(AIAnalysis.updated_at.desc()).limit(100)
+    )
+    rows = list(result.scalars().all())
     return {
-        "analyses": [],
-        "total": 0,
-        "message": "分析历史功能待实现"
+        "analyses": [
+            {
+                "id": row.id,
+                "diary_id": row.diary_id,
+                "updated_at": row.updated_at,
+                "metadata": (row.result_json or {}).get("metadata", {})
+            }
+            for row in rows
+        ],
+        "total": len(rows)
     }
+
+
+@router.get("/result/{diary_id}", response_model=AnalysisResponse, summary="获取指定日记最近一次分析结果")
+async def get_analysis_result(
+    diary_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    获取指定日记最近一次已保存的分析结果
+    """
+    result = await db.execute(
+        select(AIAnalysis).where(
+            AIAnalysis.user_id == current_user.id,
+            AIAnalysis.diary_id == diary_id
+        ).limit(1)
+    )
+    row = result.scalar_one_or_none()
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="该日记暂无已保存分析结果"
+        )
+    return row.result_json
 
 
 @router.post("/satir-analysis", summary="萨提亚冰山分析")
