@@ -7,6 +7,65 @@ import { toast } from '@/components/ui/toast'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { BookOpen, Calendar, Star, MessageCircle, FileText, Sparkles, Loader2, Brain } from 'lucide-react'
+import type { ReactNode } from 'react'
+
+function renderInline(text: string): ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean)
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={index}>{part.slice(1, -1)}</em>
+    }
+    return <span key={index}>{part}</span>
+  })
+}
+
+function MarkdownContent({ markdown }: { markdown: string }) {
+  const lines = markdown.split('\n')
+
+  return (
+    <div className="space-y-3 text-sm leading-7 text-stone-600">
+      {lines.map((line, index) => {
+        const headingMatch = /^(#{1,6})\s+(.+)$/.exec(line.trim())
+        if (headingMatch) {
+          const level = headingMatch[1].length
+          const text = headingMatch[2]
+          if (level === 1) return <h1 key={index} className="text-2xl font-bold text-stone-700">{renderInline(text)}</h1>
+          if (level === 2) return <h2 key={index} className="text-xl font-bold text-stone-700">{renderInline(text)}</h2>
+          if (level === 3) return <h3 key={index} className="text-lg font-semibold text-stone-700">{renderInline(text)}</h3>
+          return <h4 key={index} className="text-base font-semibold text-stone-700">{renderInline(text)}</h4>
+        }
+
+        const imageMatch = /^!\[(.*?)\]\((.+?)\)$/.exec(line.trim())
+        if (imageMatch) {
+          const alt = imageMatch[1] || '日记图片'
+          const src = imageMatch[2]
+          return (
+            <img
+              key={index}
+              src={src}
+              alt={alt}
+              loading="lazy"
+              className="w-full max-h-[420px] object-contain rounded-xl border border-rose-100 bg-white"
+            />
+          )
+        }
+
+        if (!line.trim()) {
+          return <div key={index} className="h-1" />
+        }
+
+        return (
+          <p key={index}>
+            {renderInline(line)}
+          </p>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function DiaryDetail() {
   const { id } = useParams<{ id: string }>()
@@ -157,7 +216,7 @@ export default function DiaryDetail() {
           <div>
             <p className="text-xs font-medium text-stone-400 mb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> 日记内容</p>
             <div className="p-5 rounded-2xl bg-rose-50/40 border border-rose-100/50">
-              <p className="whitespace-pre-wrap leading-7 text-stone-600 text-sm">{currentDiary.content}</p>
+              <MarkdownContent markdown={currentDiary.content} />
             </div>
           </div>
 

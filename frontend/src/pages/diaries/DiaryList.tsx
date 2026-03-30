@@ -10,6 +10,15 @@ import { BookOpen, Sprout, Star } from 'lucide-react'
 
 const EMOTION_FILTERS = ['全部', '开心', '平静', '焦虑', '成就感', '满足', '担忧', '疲惫']
 
+function toPreviewText(markdown: string): string {
+  return markdown
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, '[图片]')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .trim()
+}
+
 export default function DiaryList() {
   const navigate = useNavigate()
   const { diaries, isLoading, fetchDiaries, pagination, deleteDiary } = useDiaryStore()
@@ -123,7 +132,7 @@ export default function DiaryList() {
                     </div>
 
                     <p className="text-xs text-stone-400 line-clamp-2 leading-5 mb-3">
-                      {diary.content}
+                      {toPreviewText(diary.content)}
                     </p>
 
                     {tags.length > 0 && (

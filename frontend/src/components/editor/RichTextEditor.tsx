@@ -1,4 +1,4 @@
-// 富文本编辑器 - 基于 Lexical，支持图片上传
+// 富文本编辑器 - 基于 Lexical，支持 Markdown、图片上传、Slash 命令
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
@@ -6,23 +6,28 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin'
 import {
-  $getRoot, $createParagraphNode, $createTextNode,
-  FORMAT_TEXT_COMMAND, EditorState, LexicalEditor
+  $getRoot, $createParagraphNode, $createTextNode, $getSelection, $isRangeSelection,
+  FORMAT_TEXT_COMMAND, SELECTION_CHANGE_COMMAND,
+  COMMAND_PRIORITY_LOW, EditorState, LexicalEditor
 } from 'lexical'
+import { HeadingNode, QuoteNode } from '@lexical/rich-text'
 import { $generateHtmlFromNodes } from '@lexical/html'
+import { $convertFromMarkdownString, $convertToMarkdownString, TRANSFORMERS } from '@lexical/markdown'
 import { Bold, Italic, Image as ImageIcon, Loader2 } from 'lucide-react'
 import { diaryService } from '@/services/diary.service'
 import { toast } from '@/components/ui/toast'
 
 // ---- Toolbar button ----
 function ToolbarBtn({
-  children, onClick, title, disabled,
+  children, onClick, title, disabled, active,
 }: {
   children: React.ReactNode
   onClick: () => void
   title: string
   disabled?: boolean
+  active?: boolean
 }) {
   return (
     <button
@@ -30,7 +35,11 @@ function ToolbarBtn({
       title={title}
       disabled={disabled}
       onClick={onClick}
-      className="w-7 h-7 flex items-center justify-center rounded-lg text-stone-500 hover:bg-rose-100 hover:text-rose-500 transition-colors disabled:opacity-40"
+      className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40 ${
+        active
+          ? 'bg-rose-100 text-rose-500'
+          : 'text-stone-500 hover:bg-rose-100 hover:text-rose-500'
+      }`}
     >
       {children}
     </button>
@@ -38,49 +47,139 @@ function ToolbarBtn({
 }
 
 // ---- Toolbar ----
-function ToolbarPlugin({ onImageInsert }: { onImageInsert: (url: string) => void }) {
+function ToolbarPlugin({
+  onRequestImage,
+  uploading,
+}: {
+  onRequestImage: () => void
+  uploading: boolean
+}) {
   const [editor] = useLexicalComposerContext()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
+  const [activeFormats, setActiveFormats] = useState({ bold: false, italic: false })
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    try {
-      const url = await diaryService.uploadImage(file)
-      onImageInsert(url)
-    } catch {
-      toast('图片上传失败', 'error')
-    } finally {
-      setUploading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
+  useEffect(() => {
+    const updateToolbar = (editorState: EditorState) => {
+      editorState.read(() => {
+        const selection = $getSelection()
+        if ($isRangeSelection(selection)) {
+          setActiveFormats({
+            bold: selection.hasFormat('bold'),
+            italic: selection.hasFormat('italic'),
+          })
+          return
+        }
+        setActiveFormats({ bold: false, italic: false })
+      })
     }
-  }
+
+    updateToolbar(editor.getEditorState())
+
+    const unregisterUpdate = editor.registerUpdateListener(({ editorState }) => {
+      updateToolbar(editorState)
+    })
+
+    const unregisterSelection = editor.registerCommand(
+      SELECTION_CHANGE_COMMAND,
+      () => {
+        updateToolbar(editor.getEditorState())
+        return false
+      },
+      COMMAND_PRIORITY_LOW
+    )
+
+    return () => {
+      unregisterUpdate()
+      unregisterSelection()
+    }
+  }, [editor])
 
   return (
     <div className="flex items-center gap-1 px-3 py-2 border-b border-rose-50 bg-rose-50/30">
-      <ToolbarBtn title="加粗" onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')}>
+      <ToolbarBtn
+        title="加粗"
+        active={activeFormats.bold}
+        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')}
+      >
         <Bold className="w-3.5 h-3.5" />
       </ToolbarBtn>
-      <ToolbarBtn title="斜体" onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')}>
+      <ToolbarBtn
+        title="斜体"
+        active={activeFormats.italic}
+        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')}
+      >
         <Italic className="w-3.5 h-3.5" />
       </ToolbarBtn>
       <div className="w-px h-4 bg-stone-200 mx-1" />
-      <ToolbarBtn title="插入图片" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+      <ToolbarBtn title="插入图片" onClick={onRequestImage} disabled={uploading}>
         {uploading
           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
           : <ImageIcon className="w-3.5 h-3.5" />}
       </ToolbarBtn>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/gif,image/webp"
-        className="hidden"
-        onChange={handleImageUpload}
-      />
+      <span className="ml-2 text-[11px] text-stone-300 select-none">输入 / 可插入图片</span>
     </div>
   )
+}
+
+// ---- Slash command ----
+function SlashCommandPlugin({
+  onOpenImagePicker,
+  onVisibilityChange,
+}: {
+  onOpenImagePicker: () => void
+  onVisibilityChange: (visible: boolean) => void
+}) {
+  const [editor] = useLexicalComposerContext()
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    const detectSlash = (editorState: EditorState) => {
+      editorState.read(() => {
+        const selection = $getSelection()
+        if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
+          if (open) {
+            setOpen(false)
+            onVisibilityChange(false)
+          }
+          return
+        }
+
+        const anchorNode = selection.anchor.getNode()
+        const textBeforeCursor = anchorNode.getTextContent().slice(0, selection.anchor.offset)
+        const shouldOpen = /(^|\s)\/$/.test(textBeforeCursor)
+
+        if (shouldOpen !== open) {
+          setOpen(shouldOpen)
+          onVisibilityChange(shouldOpen)
+        }
+      })
+    }
+
+    detectSlash(editor.getEditorState())
+    const unregister = editor.registerUpdateListener(({ editorState }) => detectSlash(editorState))
+    return () => unregister()
+  }, [editor, onVisibilityChange, open])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!open) return
+      if (e.key === 'Escape') {
+        setOpen(false)
+        onVisibilityChange(false)
+        return
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        setOpen(false)
+        onVisibilityChange(false)
+        onOpenImagePicker()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onOpenImagePicker, onVisibilityChange, open])
+
+  return null
 }
 
 // ---- Image insertion plugin ----
@@ -92,10 +191,16 @@ function ImageInsertPlugin({
   useEffect(() => {
     if (!pendingUrl) return
     editor.update(() => {
-      const root = $getRoot()
-      const p = $createParagraphNode()
-      p.append($createTextNode(`![图片](${pendingUrl})`))
-      root.append(p)
+      const markdownImage = `\n![图片](${pendingUrl})\n`
+      const selection = $getSelection()
+      if ($isRangeSelection(selection)) {
+        selection.insertText(markdownImage)
+      } else {
+        const root = $getRoot()
+        const p = $createParagraphNode()
+        p.append($createTextNode(markdownImage))
+        root.append(p)
+      }
     })
     onInserted()
   }, [pendingUrl, editor, onInserted])
@@ -112,12 +217,7 @@ function InitialValuePlugin({ value }: { value: string }) {
     if (initialized.current || !value) return
     initialized.current = true
     editor.update(() => {
-      const root = $getRoot()
-      if (root.getFirstChild() === null) {
-        const p = $createParagraphNode()
-        p.append($createTextNode(value))
-        root.append(p)
-      }
+      $convertFromMarkdownString(value, TRANSFORMERS)
     })
   }, [editor, value])
 
@@ -152,20 +252,40 @@ export default function RichTextEditor({
   minHeight = 320,
 }: RichTextEditorProps) {
   const [pendingImageUrl, setPendingImageUrl] = useState<string | null>(null)
+  const [showSlashMenu, setShowSlashMenu] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const initialConfig = {
     namespace: 'DiaryEditor',
     theme,
+    nodes: [HeadingNode, QuoteNode],
     onError: (error: Error) => console.error(error),
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const url = await diaryService.uploadImage(file)
+      setPendingImageUrl(url)
+    } catch {
+      toast('图片上传失败', 'error')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
   }
 
   const handleChange = useCallback(
     (editorState: EditorState, editor: LexicalEditor) => {
       editorState.read(() => {
         const root = $getRoot()
-        const text = root.getTextContent()
+        const markdown = $convertToMarkdownString(TRANSFORMERS)
         const html = $generateHtmlFromNodes(editor)
-        onChange(text, html)
+        const plainText = root.getTextContent()
+        onChange(markdown || plainText, html)
       })
     },
     [onChange]
@@ -174,8 +294,27 @@ export default function RichTextEditor({
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <div className="flex flex-col">
-        <ToolbarPlugin onImageInsert={(url) => setPendingImageUrl(url)} />
+        <ToolbarPlugin onRequestImage={() => fileInputRef.current?.click()} uploading={uploading} />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          className="hidden"
+          onChange={handleImageUpload}
+        />
         <div className="relative" style={{ minHeight }}>
+          {showSlashMenu && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowSlashMenu(false)
+                fileInputRef.current?.click()
+              }}
+              className="absolute z-20 left-6 top-3 px-3 py-2 rounded-xl border border-rose-100 bg-white text-xs text-stone-600 shadow-sm hover:bg-rose-50 transition-colors"
+            >
+              插入图片
+            </button>
+          )}
           <RichTextPlugin
             contentEditable={
               <ContentEditable
@@ -191,8 +330,13 @@ export default function RichTextEditor({
             ErrorBoundary={ErrorBoundary}
           />
           <HistoryPlugin />
+          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
           <OnChangePlugin onChange={handleChange} />
           <InitialValuePlugin value={value} />
+          <SlashCommandPlugin
+            onOpenImagePicker={() => fileInputRef.current?.click()}
+            onVisibilityChange={setShowSlashMenu}
+          />
           <ImageInsertPlugin
             pendingUrl={pendingImageUrl}
             onInserted={() => setPendingImageUrl(null)}
