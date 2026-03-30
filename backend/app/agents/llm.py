@@ -106,7 +106,7 @@ class ChatOpenAI:
         self.temperature = temperature
         self.max_tokens = max_tokens
 
-    async def ainvoke(self, messages):
+    async def ainvoke(self, messages, response_format: Optional[str] = None):
         """异步调用（兼容langchain）"""
         # 提取system和user消息
         system_msg = None
@@ -130,13 +130,15 @@ class ChatOpenAI:
             result = await self.client.chat_with_system(
                 system_prompt=system_msg,
                 user_prompt=user_prompt,
-                temperature=self.temperature
+                temperature=self.temperature,
+                response_format=response_format
             )
         else:
             # 没有system prompt，直接使用messages
             result = await self.client.chat(
                 messages=messages,
-                temperature=self.temperature
+                temperature=self.temperature,
+                response_format=response_format
             )
 
         # 返回兼容langchain的Message对象

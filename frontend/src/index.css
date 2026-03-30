@@ -4,39 +4,39 @@
 
 @layer base {
   :root {
-    /* 温暖的奶白底色 */
-    --background: 36 30% 97%;
-    --foreground: 25 20% 20%;
+    /* 晨雾纸感底色 */
+    --background: 34 26% 96%;
+    --foreground: 22 18% 21%;
 
-    /* 卡片 - 纯白带微暖 */
-    --card: 0 0% 100%;
-    --card-foreground: 25 20% 20%;
+    /* 卡片 - 柔和纸白 */
+    --card: 30 24% 98%;
+    --card-foreground: 22 18% 21%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 25 20% 20%;
 
-    /* 主色 - 柔和玫瑰粉 */
-    --primary: 350 65% 65%;
+    /* 主色 - 珊瑚点缀 */
+    --primary: 11 72% 64%;
     --primary-foreground: 0 0% 100%;
 
-    /* 次要 - 薰衣草浅紫 */
-    --secondary: 280 30% 94%;
-    --secondary-foreground: 280 25% 40%;
+    /* 次要 - 雾灰紫 */
+    --secondary: 258 20% 92%;
+    --secondary-foreground: 256 18% 42%;
 
     /* 静音色 */
-    --muted: 36 20% 93%;
-    --muted-foreground: 25 15% 50%;
+    --muted: 32 18% 92%;
+    --muted-foreground: 24 12% 48%;
 
-    /* 强调 - 桃粉 */
-    --accent: 15 60% 93%;
-    --accent-foreground: 15 40% 40%;
+    /* 强调 - 纸感米杏 */
+    --accent: 31 40% 92%;
+    --accent-foreground: 20 26% 36%;
 
     --destructive: 0 72% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 20% 88%;
-    --input: 30 20% 88%;
-    --ring: 350 65% 65%;
+    --border: 28 16% 84%;
+    --input: 28 16% 84%;
+    --ring: 11 60% 62%;
     --radius: 1rem;
   }
 }
@@ -66,12 +66,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(350 40% 85%);
+  background: hsl(18 26% 80%);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(350 45% 75%);
+  background: hsl(16 30% 72%);
 }
 
 /* 动画 */
@@ -125,21 +125,21 @@
 
 /* 柔和阴影卡片 */
 .card-warm {
-  background: white;
+  background: hsl(30 25% 98%);
   border-radius: 1.25rem;
-  box-shadow: 0 2px 16px hsl(350 40% 70% / 0.10), 0 1px 4px hsl(25 30% 50% / 0.06);
-  border: 1px solid hsl(30 30% 92%);
+  box-shadow: 0 6px 22px hsl(18 20% 55% / 0.08), 0 2px 8px hsl(252 12% 45% / 0.06);
+  border: 1px solid hsl(30 20% 90%);
 }
 
 /* 输入框聚焦 */
 input:focus, textarea:focus {
   outline: none;
-  box-shadow: 0 0 0 2px hsl(350 65% 65% / 0.25);
+  box-shadow: 0 0 0 2px hsl(11 72% 64% / 0.22);
 }
 
 /* 渐变文字 */
 .text-gradient {
-  background: linear-gradient(135deg, hsl(350 65% 60%), hsl(280 50% 65%));
+  background: linear-gradient(135deg, hsl(11 72% 60%), hsl(258 24% 58%));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

@@ -25,16 +25,16 @@ export default function Timeline() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(158deg, #f8f5ef 0%, #f2eef5 58%, #f5f2ee 100%)' }}>
       {/* 顶部导航 */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="backdrop-blur-xl border-b border-stone-200/70" style={{ background: 'rgba(248,245,239,0.88)' }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <Button variant="ghost" onClick={() => navigate('/')}>
+            <Button variant="ghost" onClick={() => navigate('/')} className="hover:bg-[#f5efea]">
               ← 返回
             </Button>
             <h1 className="text-xl font-bold">时间轴</h1>
-            <Button onClick={() => navigate('/diaries/new')}>写日记</Button>
+            <Button onClick={() => navigate('/diaries/new')} className="text-white" style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}>写日记</Button>
           </div>
         </div>
       </header>
@@ -68,7 +68,7 @@ export default function Timeline() {
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
-                          <div className="text-sm text-muted-foreground mb-1">
+                      <div className="text-sm text-muted-foreground mb-1">
                             {format(new Date(event.event_date), 'yyyy年MM月dd日 EEEE', {
                               locale: zhCN,
                             })}
@@ -76,10 +76,10 @@ export default function Timeline() {
                           <h3 className="text-lg font-semibold">{event.event_summary}</h3>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          <span className="text-lg font-bold text-primary">
+                          <span className="text-lg font-bold text-[#b56f61]">
                             {event.importance_score}/10
                           </span>
-                          <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                          <span className="text-xs px-2 py-1 bg-[#f5efea] text-[#b56f61] rounded-full">
                             {event.emotion_tag}
                           </span>
                         </div>

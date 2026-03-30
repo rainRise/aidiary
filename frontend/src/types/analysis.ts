@@ -1,7 +1,9 @@
 // AI分析相关类型定义
 
 export interface AnalysisRequest {
-  diary_id: number
+  diary_id?: number
+  window_days?: number
+  max_diaries?: number
 }
 
 export interface TimelineEventAnalysis {
@@ -55,6 +57,28 @@ export interface AnalysisMetadata {
   processing_time: number
   current_step: string
   error?: string
+  analysis_scope?: 'single_diary' | 'user_integrated'
+  analyzed_diary_count?: number
+  analyzed_period?: {
+    start_date: string
+    end_date: string
+    anchor_date: string
+    window_days: number
+  }
+  analyzed_diary_ids?: number[]
+  workflow?: string[]
+  agent_runs?: Array<{
+    agent_code: string
+    agent_name: string
+    model: string
+    step: string
+    status: 'running' | 'success' | 'error'
+    started_at: number
+    ended_at?: number
+    duration_ms?: number
+    error?: string
+  }>
+  persist_warning?: string
 }
 
 export interface AnalysisResponse {

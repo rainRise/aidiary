@@ -46,26 +46,26 @@ export default function DiaryList() {
 
   if (isLoading && diaries.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(160deg, #fff8f5 0%, #fdf4ff 60%, #f5f3ff 100%)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(158deg, #f8f5ef 0%, #f2eef5 58%, #f5f2ee 100%)' }}>
         <Loading size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #fff8f5 0%, #fdf4ff 60%, #f5f3ff 100%)' }}>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(158deg, #f8f5ef 0%, #f2eef5 58%, #f5f2ee 100%)' }}>
       {/* 顶部导航 */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl border-b border-rose-100/60" style={{ background: 'rgba(255,248,245,0.88)' }}>
+      <header className="sticky top-0 z-50 backdrop-blur-xl border-b border-stone-200/70" style={{ background: 'rgba(248,245,239,0.88)' }}>
         <div className="max-w-3xl mx-auto px-6">
           <div className="flex justify-between items-center py-3.5">
             <button onClick={() => navigate('/')} className="text-sm text-stone-400 hover:text-stone-600 transition-colors">
               ← 返回
             </button>
-            <span className="text-sm font-semibold text-stone-600 flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-rose-400" /> 我的日记</span>
+            <span className="text-sm font-semibold text-stone-600 flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-[#b56f61]" /> 我的日记</span>
             <button
               onClick={() => navigate('/diaries/new')}
               className="h-8 px-4 rounded-xl text-xs font-semibold text-white shadow-sm transition-all active:scale-[0.97]"
-              style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}
+              style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
             >
               写日记
             </button>
@@ -85,9 +85,9 @@ export default function DiaryList() {
                 className={`px-3.5 py-1.5 rounded-2xl text-xs font-medium transition-all duration-200 ${
                   isActive
                     ? 'text-white shadow-sm'
-                    : 'bg-white text-stone-400 border border-stone-100 hover:border-rose-200 hover:text-rose-400'
+                    : 'bg-white text-stone-400 border border-stone-100 hover:border-[#d8c7bc] hover:text-[#b56f61]'
                 }`}
-                style={isActive ? { background: 'linear-gradient(135deg, #fb7185, #c084fc)' } : undefined}
+                style={isActive ? { background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' } : undefined}
               >
                 {label}
               </button>
@@ -103,7 +103,7 @@ export default function DiaryList() {
             <button
               onClick={() => navigate('/diaries/new')}
               className="h-10 px-6 rounded-2xl text-sm font-semibold text-white shadow-md"
-              style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}
+              style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
             >
               写日记
             </button>
@@ -126,7 +126,7 @@ export default function DiaryList() {
                           {format(new Date(diary.diary_date), 'yyyy年MM月dd日 EEEE', { locale: zhCN })}
                         </p>
                       </div>
-                      <span className="text-xs font-medium text-rose-400 shrink-0 ml-3 flex items-center gap-1">
+                      <span className="text-xs font-medium text-[#b56f61] shrink-0 ml-3 flex items-center gap-1">
                         <Star className="w-3 h-3" /> {diary.importance_score}/10
                       </span>
                     </div>
@@ -140,7 +140,7 @@ export default function DiaryList() {
                         {tags.map((tag, index) => (
                           <span
                             key={index}
-                            className="text-[10px] px-2 py-0.5 rounded-full bg-rose-50 text-rose-400 border border-rose-100"
+                            className="text-[10px] px-2 py-0.5 rounded-full bg-[#f5efea] text-[#b56f61] border border-[#e7dbd5]"
                           >
                             {tag}
                           </span>
@@ -188,3 +188,5 @@ export default function DiaryList() {
     </div>
   )
 }
+
+

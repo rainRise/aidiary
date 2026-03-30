@@ -33,7 +33,7 @@ interface DiaryState {
   }) => Promise<Diary>
   updateDiary: (id: number, data: Partial<Diary>) => Promise<void>
   deleteDiary: (id: number) => Promise<void>
-  fetchTimelineEvents: (limit?: number) => Promise<void>
+  fetchTimelineEvents: (days?: number) => Promise<void>
   fetchEmotionStats: (days?: number) => Promise<void>
   clearCurrentDiary: () => void
   clearError: () => void
@@ -146,9 +146,9 @@ export const useDiaryStore = create<DiaryState>((set, _get) => ({
     }
   },
 
-  fetchTimelineEvents: async (limit = 10) => {
+  fetchTimelineEvents: async (days = 7) => {
     try {
-      const events = await diaryService.getRecentTimeline(limit)
+      const events = await diaryService.getRecentTimeline(days)
       set({ timelineEvents: events })
     } catch (error: any) {
       console.error('Failed to fetch timeline events:', error)

@@ -315,6 +315,12 @@ export default function AnalysisResult() {
             {analysis.metadata && (
               <div className="text-center text-xs text-stone-300 py-2">
                 <p>处理时间: {analysis.metadata.processing_time.toFixed(2)}秒</p>
+                {analysis.metadata.analysis_scope === 'user_integrated' && analysis.metadata.analyzed_period && (
+                  <p>
+                    整合范围: {analysis.metadata.analyzed_diary_count ?? '-'} 篇 ·
+                    {analysis.metadata.analyzed_period.start_date} 至 {analysis.metadata.analyzed_period.end_date}
+                  </p>
+                )}
               </div>
             )}
           </div>

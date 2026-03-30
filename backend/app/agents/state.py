@@ -41,3 +41,4 @@ class AnalysisState(TypedDict):
     processing_time: float
     error: Optional[str]
     current_step: str
+    agent_runs: List[Dict]

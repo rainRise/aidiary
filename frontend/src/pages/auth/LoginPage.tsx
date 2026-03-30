@@ -57,28 +57,33 @@ export default function LoginPage() {
     }
   }
 
-  const inputClass = "w-full h-12 px-4 rounded-2xl bg-white border border-rose-100 text-stone-700 text-sm placeholder:text-stone-300 outline-none transition-all duration-200 focus:border-rose-300 focus:ring-2 focus:ring-rose-100 shadow-sm"
+  const inputClass = "w-full h-12 px-4 rounded-2xl bg-white/90 border border-stone-200 text-stone-700 text-sm placeholder:text-stone-300 outline-none transition-all duration-200 focus:border-[#d8b8a8] focus:ring-2 focus:ring-[#f4e6df] shadow-sm"
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, #fff8f5 0%, #fdf4ff 50%, #f8f4ff 100%)' }}>
+    <div className="min-h-screen flex" style={{ background: 'linear-gradient(158deg, #f8f5ef 0%, #f2eef5 58%, #f5f2ee 100%)' }}>
       {/* 左侧品牌区域 */}
       <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden items-center justify-center p-16">
-        {/* 背景装饰 */}
-        <div className="absolute top-20 left-16 w-72 h-72 rounded-full opacity-20 animate-float"
-          style={{ background: 'radial-gradient(circle, #f9a8d4, #c4b5fd)' }} />
-        <div className="absolute bottom-24 right-8 w-48 h-48 rounded-full opacity-15 animate-float" 
-          style={{ animationDelay: '1.5s', background: 'radial-gradient(circle, #fdba74, #fca5a5)' }} />
-        <div className="absolute top-1/2 right-16 w-32 h-32 rounded-full opacity-10 animate-float"
-          style={{ animationDelay: '0.8s', background: 'radial-gradient(circle, #86efac, #67e8f9)' }} />
+        {/* 晨雾纸感背景图 */}
+        <img
+          src="/branding/login-morning-mist-bg.jpg"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(120deg, rgba(248,245,239,0.86) 0%, rgba(245,242,238,0.72) 48%, rgba(242,238,245,0.82) 100%)' }} />
+        <div className="absolute top-20 left-16 w-72 h-72 rounded-full opacity-25 animate-float"
+          style={{ background: 'radial-gradient(circle, rgba(173,166,191,0.22), rgba(248,245,239,0))' }} />
+        <div className="absolute bottom-24 right-8 w-56 h-56 rounded-full opacity-25 animate-float"
+          style={{ animationDelay: '1.5s', background: 'radial-gradient(circle, rgba(235,143,123,0.22), rgba(248,245,239,0))' }} />
 
         <div className="relative z-10 max-w-md">
           <div className="mb-10 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white text-lg font-bold shadow-md"
-              style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}>
-              印
-            </div>
+            <img
+              src="/branding/yinji-logo-nanobanana-v1_1.png"
+              alt="印记 Logo"
+              className="w-10 h-10 rounded-2xl object-cover shadow-md"
+            />
             <span className="text-stone-700 text-xl font-semibold">印记</span>
-            <span className="text-xs text-stone-400 bg-rose-50 border border-rose-100 rounded-full px-2.5 py-0.5">Beta</span>
+            <span className="text-xs text-stone-400 bg-[#f5efea] border border-[#e7dbd5] rounded-full px-2.5 py-0.5">Beta</span>
           </div>
 
           <h2 className="text-4xl font-bold leading-tight mb-5" style={{ color: '#3d2b2b' }}>
@@ -92,11 +97,11 @@ export default function LoginPage() {
 
           <div className="space-y-4">
             {[
-              { icon: <Brain className="w-5 h-5 text-rose-400" />, title: 'AI 深度分析', desc: '萨提亚冰山模型，看见内心深处' },
+              { icon: <Brain className="w-5 h-5 text-[#b56f61]" />, title: 'AI 深度分析', desc: '萨提亚冰山模型，看见内心深处' },
               { icon: <Leaf className="w-5 h-5 text-emerald-400" />, title: '情绪追踪', desc: '可视化情绪变化，了解自己的规律' },
               { icon: <Sparkles className="w-5 h-5 text-amber-400" />, title: '疗愈回应', desc: '温暖的 AI 反馈，给你情感支持' },
             ].map((item) => (
-              <div key={item.title} className="flex items-start gap-4 p-4 rounded-2xl bg-white/60 backdrop-blur-sm border border-rose-50">
+              <div key={item.title} className="flex items-start gap-4 p-4 rounded-2xl bg-white/70 backdrop-blur-sm border border-[#e9e3de]">
                 <span className="mt-0.5">{item.icon}</span>
                 <div>
                   <div className="text-sm font-semibold text-stone-700">{item.title}</div>
@@ -113,8 +118,11 @@ export default function LoginPage() {
         <div className="w-full max-w-[420px] animate-fade-in">
           {/* 移动端logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold"
-              style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}>印</div>
+            <img
+              src="/branding/yinji-logo-nanobanana-v1_1.png"
+              alt="印记 Logo"
+              className="w-8 h-8 rounded-xl object-cover shadow-sm"
+            />
             <span className="text-stone-700 font-semibold">印记</span>
           </div>
 
@@ -124,7 +132,7 @@ export default function LoginPage() {
           </div>
 
           {/* 登录方式切换 */}
-          <div className="flex rounded-2xl bg-rose-50 p-1 mb-6">
+          <div className="flex rounded-2xl bg-[#efe9e4] p-1 mb-6">
             {(['password', 'code'] as const).map((m) => (
               <button
                 key={m}
@@ -132,7 +140,7 @@ export default function LoginPage() {
                 onClick={() => { setMode(m); clearError() }}
                 className={`flex-1 h-9 rounded-xl text-sm font-medium transition-all duration-200 ${
                   mode === m
-                    ? 'bg-white text-rose-500 shadow-sm'
+                    ? 'bg-white text-[#dd6d59] shadow-sm'
                     : 'text-stone-400 hover:text-stone-600'
                 }`}
               >
@@ -196,7 +204,7 @@ export default function LoginPage() {
                     type="button"
                     onClick={handleSendCode}
                     disabled={!email || !email.includes('@') || countdown > 0}
-                    className="shrink-0 h-12 px-4 rounded-2xl text-sm font-medium border border-rose-200 text-rose-400 bg-rose-50 hover:bg-rose-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                    className="shrink-0 h-12 px-4 rounded-2xl text-sm font-medium border border-[#dfccc2] text-[#b56f61] bg-[#f5efea] hover:bg-[#efe6e0] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
                   >
                     {countdown > 0 ? `${countdown}s` : '发送'}
                   </button>
@@ -216,7 +224,7 @@ export default function LoginPage() {
               type="submit"
               disabled={isLoading}
               className="w-full h-12 rounded-2xl text-sm font-semibold text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-md mt-2"
-              style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}
+              style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin mx-auto" />
@@ -224,15 +232,15 @@ export default function LoginPage() {
             </button>
 
             <div className="flex items-center gap-4">
-              <div className="flex-1 h-px bg-rose-100" />
+              <div className="flex-1 h-px bg-[#e7dbd5]" />
               <span className="text-xs text-stone-300">或</span>
-              <div className="flex-1 h-px bg-rose-100" />
+              <div className="flex-1 h-px bg-[#e7dbd5]" />
             </div>
 
             <button
               type="button"
               onClick={() => navigate('/register')}
-              className="w-full h-12 rounded-2xl text-sm font-medium text-rose-400 bg-rose-50 border border-rose-100 hover:bg-rose-100 transition-all duration-200 active:scale-[0.98]"
+              className="w-full h-12 rounded-2xl text-sm font-medium text-[#b56f61] bg-[#f6f1ec] border border-[#e7dbd5] hover:bg-[#efe8e2] transition-all duration-200 active:scale-[0.98]"
             >
               还没有账号？立即注册
             </button>
@@ -242,3 +250,4 @@ export default function LoginPage() {
     </div>
   )
 }
+

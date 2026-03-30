@@ -48,7 +48,7 @@ function MarkdownContent({ markdown }: { markdown: string }) {
               src={src}
               alt={alt}
               loading="lazy"
-              className="w-full max-h-[420px] object-contain rounded-xl border border-rose-100 bg-white"
+              className="w-full max-h-[420px] object-contain rounded-xl border border-[#e7dbd5] bg-white"
             />
           )
         }
@@ -135,7 +135,7 @@ export default function DiaryDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(160deg, #fff8f5 0%, #fdf4ff 60%, #f5f3ff 100%)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(158deg, #f8f5ef 0%, #f2eef5 58%, #f5f2ee 100%)' }}>
         <Loading size="lg" />
       </div>
     )
@@ -143,13 +143,13 @@ export default function DiaryDetail() {
 
   if (!currentDiary) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(160deg, #fff8f5 0%, #fdf4ff 60%, #f5f3ff 100%)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(158deg, #f8f5ef 0%, #f2eef5 58%, #f5f2ee 100%)' }}>
         <div className="card-warm p-8 text-center max-w-sm">
           <p className="text-stone-400 mb-4 flex items-center justify-center gap-1.5"><BookOpen className="w-4 h-4" /> 日记不存在</p>
           <button
             onClick={() => navigate('/diaries')}
             className="h-10 px-6 rounded-xl text-sm font-medium text-white shadow-sm"
-            style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}
+            style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
           >
             返回列表
           </button>
@@ -159,9 +159,9 @@ export default function DiaryDetail() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #fff8f5 0%, #fdf4ff 60%, #f5f3ff 100%)' }}>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(158deg, #f8f5ef 0%, #f2eef5 58%, #f5f2ee 100%)' }}>
       {/* 顶部导航 */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl border-b border-rose-100/60" style={{ background: 'rgba(255,248,245,0.88)' }}>
+      <header className="sticky top-0 z-50 backdrop-blur-xl border-b border-stone-200/70" style={{ background: 'rgba(248,245,239,0.88)' }}>
         <div className="max-w-3xl mx-auto px-6">
           <div className="flex justify-between items-center py-3.5">
             <button
@@ -170,7 +170,7 @@ export default function DiaryDetail() {
             >
               ← 返回
             </button>
-            <span className="text-sm font-semibold text-stone-600 flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-rose-400" /> 日记详情</span>
+            <span className="text-sm font-semibold text-stone-600 flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-[#b56f61]" /> 日记详情</span>
             <div className="w-12" />
           </div>
         </div>
@@ -190,7 +190,7 @@ export default function DiaryDetail() {
               <span className="text-stone-200">·</span>
               <span>{currentDiary.word_count} 字</span>
               <span className="text-stone-200">·</span>
-              <span className="text-rose-400 font-medium flex items-center gap-1"><Star className="w-3.5 h-3.5" /> 重要性 {currentDiary.importance_score}/10</span>
+              <span className="text-[#b56f61] font-medium flex items-center gap-1"><Star className="w-3.5 h-3.5" /> 重要性 {currentDiary.importance_score}/10</span>
             </div>
           </div>
 
@@ -203,7 +203,7 @@ export default function DiaryDetail() {
                   <span
                     key={index}
                     className="text-xs px-3 py-1.5 rounded-2xl text-white font-medium"
-                    style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}
+                    style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
                   >
                     {tag}
                   </span>
@@ -215,13 +215,13 @@ export default function DiaryDetail() {
           {/* 日记正文 */}
           <div>
             <p className="text-xs font-medium text-stone-400 mb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> 日记内容</p>
-            <div className="p-5 rounded-2xl bg-rose-50/40 border border-rose-100/50">
+            <div className="p-5 rounded-2xl bg-[#f5efea]/40 border border-[#e7dbd5]/50">
               <MarkdownContent markdown={currentDiary.content} />
             </div>
           </div>
 
           {/* 时间信息 */}
-          <div className="text-xs text-stone-300 pt-2 border-t border-rose-50 space-y-1">
+          <div className="text-xs text-stone-300 pt-2 border-t border-[#efe6e0] space-y-1">
             <p>创建于 {format(new Date(currentDiary.created_at), 'yyyy-MM-dd HH:mm')}</p>
             {currentDiary.updated_at !== currentDiary.created_at && (
               <p>更新于 {format(new Date(currentDiary.updated_at), 'yyyy-MM-dd HH:mm')}</p>
@@ -231,7 +231,7 @@ export default function DiaryDetail() {
 
         {/* AI分析卡片 */}
         <div className="card-warm overflow-hidden">
-          <div className="p-6" style={{ background: 'linear-gradient(135deg, rgba(251,113,133,0.08), rgba(192,132,252,0.08))' }}>
+          <div className="p-6" style={{ background: 'linear-gradient(135deg, rgba(232,143,123,0.10), rgba(160,154,184,0.10))' }}>
             <div className="flex items-center gap-2 mb-3">
               <Brain className="w-4 h-4 text-violet-400" />
               <h3 className="text-sm font-semibold text-stone-600">AI 深度分析</h3>
@@ -249,7 +249,7 @@ export default function DiaryDetail() {
                 onClick={handleAnalyze}
                 disabled={analyzing && !currentDiary.is_analyzed}
                 className="h-9 px-5 rounded-xl text-xs font-semibold text-white shadow-sm transition-all active:scale-[0.97] disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}
+                style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
               >
                 {currentDiary.is_analyzed ? '查看分析结果' : analyzing ? '等待分析完成...' : '开始 AI 分析'}
               </button>
@@ -267,7 +267,7 @@ export default function DiaryDetail() {
           <button
             onClick={() => navigate('/diaries/new')}
             className="flex-1 h-11 rounded-2xl text-sm font-medium text-white shadow-sm transition-all active:scale-[0.98]"
-            style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}
+            style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
           >
             写新日记
           </button>
@@ -282,3 +282,5 @@ export default function DiaryDetail() {
     </div>
   )
 }
+
+

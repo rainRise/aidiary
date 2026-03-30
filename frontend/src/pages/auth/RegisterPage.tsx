@@ -65,7 +65,7 @@ export default function RegisterPage() {
     }
   }
 
-  const inputClass = "w-full h-12 px-4 rounded-2xl bg-white border border-rose-100 text-stone-700 text-sm placeholder:text-stone-300 outline-none transition-all duration-200 focus:border-rose-300 focus:ring-2 focus:ring-rose-100 shadow-sm"
+  const inputClass = "w-full h-12 px-4 rounded-2xl bg-white/90 border border-stone-200 text-stone-700 text-sm placeholder:text-stone-300 outline-none transition-all duration-200 focus:border-[#d8b8a8] focus:ring-2 focus:ring-[#f4e6df] shadow-sm"
 
   const strengthColor = (len: number, i: number) => {
     if (len < i * 3) return 'bg-stone-100'
@@ -75,20 +75,23 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, #fff8f5 0%, #fdf4ff 50%, #f8f4ff 100%)' }}>
+    <div className="min-h-screen flex" style={{ background: 'linear-gradient(158deg, #f8f5ef 0%, #f2eef5 58%, #f5f2ee 100%)' }}>
       {/* 左侧品牌区域 */}
       <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden items-center justify-center p-16">
         <div className="absolute top-16 right-20 w-64 h-64 rounded-full opacity-20 animate-float"
-          style={{ background: 'radial-gradient(circle, #c4b5fd, #f9a8d4)' }} />
+          style={{ background: 'radial-gradient(circle, rgba(163,154,188,0.28), rgba(248,245,239,0.02))' }} />
         <div className="absolute bottom-20 left-10 w-52 h-52 rounded-full opacity-15 animate-float"
-          style={{ animationDelay: '1.2s', background: 'radial-gradient(circle, #86efac, #67e8f9)' }} />
+          style={{ animationDelay: '1.2s', background: 'radial-gradient(circle, rgba(232,143,123,0.2), rgba(248,245,239,0.02))' }} />
         <div className="absolute top-1/2 left-1/4 w-36 h-36 rounded-full opacity-10 animate-float"
           style={{ animationDelay: '0.6s', background: 'radial-gradient(circle, #fde68a, #fdba74)' }} />
 
         <div className="relative z-10 max-w-md">
           <div className="mb-10 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white text-lg font-bold shadow-md"
-              style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}>印</div>
+            <img
+              src="/branding/yinji-logo-nanobanana-v1_1.png"
+              alt="印记 Logo"
+              className="w-10 h-10 rounded-2xl object-cover shadow-md"
+            />
             <span className="text-stone-700 text-xl font-semibold">印记</span>
           </div>
 
@@ -107,9 +110,9 @@ export default function RegisterPage() {
               { num: '2', label: '设置密码', desc: '保护你的账号安全', active: step === 2 },
               { num: '3', label: '开始探索', desc: '书写第一篇日记', active: false },
             ].map((s) => (
-              <div key={s.num} className={`flex items-center gap-4 p-3.5 rounded-2xl transition-all duration-300 ${s.active ? 'bg-white/70 border border-rose-100' : 'opacity-50'}`}>
+              <div key={s.num} className={`flex items-center gap-4 p-3.5 rounded-2xl transition-all duration-300 ${s.active ? 'bg-white/70 border border-[#e9e3de]' : 'opacity-50'}`}>
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white ${s.active ? '' : 'opacity-60'}`}
-                  style={{ background: s.active ? 'linear-gradient(135deg, #fb7185, #c084fc)' : '#e5e7eb' }}>
+                  style={{ background: s.active ? 'linear-gradient(135deg, #e88f7b, #a09ab8)' : '#e5e7eb' }}>
                   {s.num}
                 </div>
                 <div>
@@ -126,8 +129,11 @@ export default function RegisterPage() {
       <div className="w-full lg:w-[55%] flex items-center justify-center px-6 sm:px-16">
         <div className="w-full max-w-[420px] animate-fade-in">
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold"
-              style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}>印</div>
+            <img
+              src="/branding/yinji-logo-nanobanana-v1_1.png"
+              alt="印记 Logo"
+              className="w-8 h-8 rounded-xl object-cover shadow-sm"
+            />
             <span className="text-stone-700 font-semibold">印记</span>
           </div>
 
@@ -141,9 +147,9 @@ export default function RegisterPage() {
           {/* 步骤进度条 */}
           <div className="flex gap-2 mb-7">
             <div className={`h-1.5 rounded-full transition-all duration-500 ${step >= 1 ? 'flex-1' : 'w-8'}`}
-              style={{ background: step >= 1 ? 'linear-gradient(90deg, #fb7185, #c084fc)' : '#e5e7eb' }} />
+              style={{ background: step >= 1 ? 'linear-gradient(90deg, #e88f7b, #a09ab8)' : '#e5e7eb' }} />
             <div className={`h-1.5 rounded-full transition-all duration-500 ${step >= 2 ? 'flex-1' : 'w-8 bg-stone-100'}`}
-              style={{ background: step >= 2 ? 'linear-gradient(90deg, #c084fc, #818cf8)' : undefined }} />
+              style={{ background: step >= 2 ? 'linear-gradient(90deg, #9b95b3, #8b9bb1)' : undefined }} />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -165,7 +171,7 @@ export default function RegisterPage() {
                     onClick={handleSendCode}
                     disabled={!email || !email.includes('@') || countdown > 0}
                     className="shrink-0 h-12 px-4 rounded-2xl text-sm font-medium text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
-                    style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}
+                    style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
                   >
                     {countdown > 0 ? `${countdown}s` : '发送验证码'}
                   </button>
@@ -173,7 +179,7 @@ export default function RegisterPage() {
               </div>
               {step === 2 && (
                 <button type="button" onClick={() => setStep(1)}
-                  className="text-xs text-rose-400 hover:text-rose-500 transition-colors">
+                  className="text-xs text-[#b56f61] hover:text-[#a45f52] transition-colors">
                   ← 更换邮箱
                 </button>
               )}
@@ -197,7 +203,7 @@ export default function RegisterPage() {
                       type="button"
                       onClick={handleSendCode}
                       disabled={countdown > 0}
-                      className="shrink-0 h-12 px-4 rounded-2xl text-sm font-medium border border-rose-200 text-rose-400 bg-rose-50 hover:bg-rose-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      className="shrink-0 h-12 px-4 rounded-2xl text-sm font-medium border border-[#dfccc2] text-[#b56f61] bg-[#f5efea] hover:bg-[#efe6e0] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                     >
                       {countdown > 0 ? `${countdown}s` : '重发'}
                     </button>
@@ -276,7 +282,7 @@ export default function RegisterPage() {
                 type="submit"
                 disabled={!code || !password || password !== confirmPassword || isLoading}
                 className="w-full h-12 rounded-2xl text-sm font-semibold text-white transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] shadow-md mt-1"
-                style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}
+                style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
               >
                 {isLoading
                   ? <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin mx-auto" />
@@ -285,15 +291,15 @@ export default function RegisterPage() {
             )}
 
             <div className="flex items-center gap-4">
-              <div className="flex-1 h-px bg-rose-100" />
+              <div className="flex-1 h-px bg-[#e7dbd5]" />
               <span className="text-xs text-stone-300">或</span>
-              <div className="flex-1 h-px bg-rose-100" />
+              <div className="flex-1 h-px bg-[#e7dbd5]" />
             </div>
 
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="w-full h-12 rounded-2xl text-sm font-medium text-rose-400 bg-rose-50 border border-rose-100 hover:bg-rose-100 transition-all duration-200 active:scale-[0.98]"
+              className="w-full h-12 rounded-2xl text-sm font-medium text-[#b56f61] bg-[#f6f1ec] border border-[#e7dbd5] hover:bg-[#efe8e2] transition-all duration-200 active:scale-[0.98]"
             >
               已有账号？立即登录
             </button>
@@ -303,3 +309,5 @@ export default function RegisterPage() {
     </div>
   )
 }
+
+

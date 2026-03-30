@@ -68,7 +68,8 @@ class AgentOrchestrator:
             "therapeutic_response": "",
             "processing_time": 0,
             "error": None,
-            "current_step": "initialize"
+            "current_step": "initialize",
+            "agent_runs": []
         }
 
         print("\n" + "="*60)
@@ -154,7 +155,18 @@ class AgentOrchestrator:
             "metadata": {
                 "processing_time": state.get("processing_time", 0),
                 "current_step": state.get("current_step", ""),
-                "error": state.get("error")
+                "error": state.get("error"),
+                "workflow": ["0", "A", "B1", "B2", "B3", "B4", "C"],
+                "workflow_detail": [
+                    {"code": "0", "agent": "上下文收集智能体", "subtask": "汇总画像/时间轴上下文"},
+                    {"code": "A", "agent": "时间线管家", "subtask": "提取事件并结构化"},
+                    {"code": "B1", "agent": "萨提亚分析师", "subtask": "情绪层分析"},
+                    {"code": "B2", "agent": "萨提亚分析师", "subtask": "认知与信念层分析"},
+                    {"code": "B3", "agent": "萨提亚分析师", "subtask": "存在层分析"},
+                    {"code": "B4", "agent": "萨提亚分析师", "subtask": "疗愈回复生成"},
+                    {"code": "C", "agent": "社交内容生成器", "subtask": "多版本文案输出"},
+                ],
+                "agent_runs": state.get("agent_runs", [])
             }
         }
 

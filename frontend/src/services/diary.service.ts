@@ -52,9 +52,9 @@ export const diaryService = {
   },
 
   // 获取最近的时间轴事件
-  getRecentTimeline: async (limit: number = 10): Promise<TimelineEvent[]> => {
+  getRecentTimeline: async (days: number = 7): Promise<TimelineEvent[]> => {
     const response = await api.get<TimelineEvent[]>('/api/v1/diaries/timeline/recent', {
-      params: { limit },
+      params: { days },
     })
     return response.data
   },

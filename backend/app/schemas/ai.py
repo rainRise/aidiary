@@ -8,7 +8,9 @@ from datetime import datetime
 
 class AnalysisRequest(BaseModel):
     """分析请求"""
-    diary_id: int = Field(..., description="日记ID")
+    diary_id: Optional[int] = Field(default=None, description="锚点日记ID（可选，用于确定分析时间窗口）")
+    window_days: int = Field(default=30, ge=7, le=365, description="分析窗口天数（默认30天）")
+    max_diaries: int = Field(default=40, ge=5, le=200, description="最多纳入分析的日记数（默认40）")
 
 class TitleSuggestionRequest(BaseModel):
     """标题生成请求"""

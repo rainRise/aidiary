@@ -86,26 +86,29 @@ export default function Dashboard() {
 
   if (isLoading && diaries.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fff8f5, #fdf4ff)' }}>
-        <div className="w-8 h-8 border-2 border-rose-200 border-t-rose-400 rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(158deg, #f8f5ef, #f2eef5)' }}>
+        <div className="w-8 h-8 border-2 border-[#d9cbc2] border-t-[#b56f61] rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #fff8f5 0%, #fdf4ff 60%, #f5f3ff 100%)' }}>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(158deg, #f8f5ef 0%, #f2eef5 58%, #f5f2ee 100%)' }}>
       {/* 顶部导航 */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl border-b border-rose-100/60" style={{ background: 'rgba(255,248,245,0.85)' }}>
+      <header className="sticky top-0 z-50 backdrop-blur-xl border-b border-stone-200/70" style={{ background: 'rgba(248,245,239,0.85)' }}>
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
           <div className="flex justify-between items-center h-15 py-3">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-sm"
-                style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}>印</div>
+              <img
+                src="/branding/yinji-logo-nanobanana-v1_1.png"
+                alt="印记 Logo"
+                className="w-8 h-8 rounded-xl object-cover shadow-sm"
+              />
               <span className="text-stone-700 font-semibold">印记</span>
               <div className="hidden sm:flex items-center gap-0.5 ml-3">
                 {[['/', '首页'], ['/diaries', '日记'], ['/timeline', '时间轴']].map(([path, label]) => (
                   <button key={path} onClick={() => navigate(path)}
-                    className="px-3 py-1.5 text-sm rounded-xl text-stone-500 hover:text-stone-800 hover:bg-rose-50 transition-all">
+                    className="px-3 py-1.5 text-sm rounded-xl text-stone-500 hover:text-stone-800 hover:bg-[#f5efea] transition-all">
                     {label}
                   </button>
                 ))}
@@ -116,10 +119,10 @@ export default function Dashboard() {
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2.5 px-2 py-1.5 rounded-2xl hover:bg-rose-50/80 transition-all"
+                className="flex items-center gap-2.5 px-2 py-1.5 rounded-2xl hover:bg-[#f5efea]/80 transition-all"
               >
                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md ring-2 ring-white/80 overflow-hidden"
-                  style={!user?.avatar_url ? { background: 'linear-gradient(135deg, #fb7185, #c084fc)' } : undefined}>
+                  style={!user?.avatar_url ? { background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' } : undefined}>
                   {user?.avatar_url
                     ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
                     : avatarLetter}
@@ -133,13 +136,13 @@ export default function Dashboard() {
 
               {/* 下拉菜单 */}
               {showUserMenu && (
-                <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white/95 backdrop-blur-xl shadow-xl border border-rose-100/60 overflow-hidden z-50"
+                <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white/95 backdrop-blur-xl shadow-xl border border-stone-200/70 overflow-hidden z-50"
                   style={{ animation: 'fadeInDown 0.15s ease-out' }}>
                   {/* 用户信息区 */}
-                  <div className="px-4 py-3.5 border-b border-rose-50">
+                  <div className="px-4 py-3.5 border-b border-[#efe6e0]">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm overflow-hidden"
-                        style={!user?.avatar_url ? { background: 'linear-gradient(135deg, #fb7185, #c084fc)' } : undefined}>
+                        style={!user?.avatar_url ? { background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' } : undefined}>
                         {user?.avatar_url
                           ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
                           : avatarLetter}
@@ -155,21 +158,21 @@ export default function Dashboard() {
                   <div className="py-1.5">
                     <button
                       onClick={() => { setShowUserMenu(false); navigate('/diaries/new') }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-stone-600 hover:bg-rose-50/80 transition-colors flex items-center gap-3"
+                      className="w-full px-4 py-2.5 text-left text-sm text-stone-600 hover:bg-[#f5efea]/80 transition-colors flex items-center gap-3"
                     >
-                      <PenLine className="w-4 h-4 text-rose-400" />
+                      <PenLine className="w-4 h-4 text-[#b56f61]" />
                       写日记
                     </button>
                     <button
                       onClick={() => { setShowUserMenu(false); navigate('/diaries') }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-stone-600 hover:bg-rose-50/80 transition-colors flex items-center gap-3"
+                      className="w-full px-4 py-2.5 text-left text-sm text-stone-600 hover:bg-[#f5efea]/80 transition-colors flex items-center gap-3"
                     >
                       <BookOpen className="w-4 h-4 text-violet-400" />
                       我的日记
                     </button>
                     <button
                       onClick={() => { setShowUserMenu(false); navigate('/settings') }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-stone-600 hover:bg-rose-50/80 transition-colors flex items-center gap-3"
+                      className="w-full px-4 py-2.5 text-left text-sm text-stone-600 hover:bg-[#f5efea]/80 transition-colors flex items-center gap-3"
                     >
                       <Settings className="w-4 h-4 text-stone-400" />
                       设置
@@ -177,7 +180,7 @@ export default function Dashboard() {
                   </div>
 
                   {/* 登出 */}
-                  <div className="border-t border-rose-50 py-1.5">
+                  <div className="border-t border-[#efe6e0] py-1.5">
                     <button
                       onClick={handleLogout}
                       className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-50/60 transition-colors flex items-center gap-3"
@@ -199,7 +202,7 @@ export default function Dashboard() {
           <img src="/dashboard-banner-bg_1.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-white/60 via-white/30 to-transparent" />
           <div className="relative">
-            <p className="text-rose-400/80 text-sm mb-1">{greeting()}</p>
+            <p className="text-[#b56f61]/80 text-sm mb-1">{greeting()}</p>
             <h1 className="text-2xl font-bold text-stone-700 mb-1.5">
               {displayName}
             </h1>
@@ -207,7 +210,7 @@ export default function Dashboard() {
             <button
               onClick={() => navigate('/diaries/new')}
               className="h-10 px-6 rounded-2xl text-sm font-semibold text-white shadow-md transition-all duration-200 active:scale-[0.97]"
-              style={{ background: 'linear-gradient(135deg, #fb7185, #c084fc)' }}
+              style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
             >
               开始写日记
             </button>
@@ -217,7 +220,7 @@ export default function Dashboard() {
         {/* 统计卡片 */}
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: '累计日记', value: stats.total, icon: <BookMarked className="w-5 h-5 text-rose-400" />, bg: 'from-rose-50 to-pink-50', border: 'border-rose-100', val: 'text-rose-500' },
+            { label: '累计日记', value: stats.total, icon: <BookMarked className="w-5 h-5 text-[#b56f61]" />, bg: 'from-[#f8efe9] to-[#ede8f1]', border: 'border-[#e7dbd5]', val: 'text-[#a45f52]' },
             { label: '本月记录', value: stats.thisMonth, icon: <Moon className="w-5 h-5 text-violet-400" />, bg: 'from-violet-50 to-purple-50', border: 'border-violet-100', val: 'text-violet-500' },
             { label: '主要情绪', value: stats.topEmotion || '—', icon: <Heart className="w-5 h-5 text-amber-400" />, bg: 'from-amber-50 to-orange-50', border: 'border-amber-100', val: 'text-amber-500' },
           ].map((item) => (
@@ -232,7 +235,7 @@ export default function Dashboard() {
         {/* 快速操作 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { icon: <PenLine className="w-6 h-6 text-rose-400" />, title: '写日记', desc: '记录今天', bg: 'hover:bg-rose-50 hover:border-rose-200', action: () => navigate('/diaries/new') },
+            { icon: <PenLine className="w-6 h-6 text-[#b56f61]" />, title: '写日记', desc: '记录今天', bg: 'hover:bg-[#f5efea] hover:border-[#d8c7bc]', action: () => navigate('/diaries/new') },
             { icon: <BookOpen className="w-6 h-6 text-violet-400" />, title: '日记本', desc: '浏览记录', bg: 'hover:bg-violet-50 hover:border-violet-200', action: () => navigate('/diaries') },
             { icon: <Clock className="w-6 h-6 text-emerald-400" />, title: '时间轴', desc: '回顾历程', bg: 'hover:bg-emerald-50 hover:border-emerald-200', action: () => navigate('/timeline') },
             { icon: <Sparkles className="w-6 h-6 text-amber-400" />, title: 'AI 分析', desc: '心理洞察', bg: 'hover:bg-amber-50 hover:border-amber-200', action: () => {
@@ -256,7 +259,7 @@ export default function Dashboard() {
         {localEmotionStats.length > 0 && (
           <div className="card-warm p-6">
             <div className="flex items-center gap-2 mb-1">
-              <MessageCircle className="w-4.5 h-4.5 text-rose-400" />
+              <MessageCircle className="w-4.5 h-4.5 text-[#b56f61]" />
               <h2 className="text-sm font-semibold text-stone-700">情绪分布</h2>
             </div>
             <p className="text-xs text-stone-400 mb-4 ml-7">近 30 天的情绪变化</p>
@@ -269,14 +272,14 @@ export default function Dashboard() {
           <div className="card-warm overflow-hidden">
             <div className="flex justify-between items-center px-6 pt-6 pb-4">
               <div className="flex items-center gap-2">
-                <FileText className="w-4.5 h-4.5 text-rose-400" />
+                <FileText className="w-4.5 h-4.5 text-[#b56f61]" />
                 <div>
                   <h2 className="text-sm font-semibold text-stone-700">最近日记</h2>
                   <p className="text-xs text-stone-400">你最近的记录</p>
                 </div>
               </div>
               <button onClick={() => navigate('/diaries')}
-                className="text-xs text-rose-400 hover:text-rose-500 transition-colors">
+                className="text-xs text-[#b56f61] hover:text-[#a45f52] transition-colors">
                 查看全部 →
               </button>
             </div>
@@ -284,7 +287,7 @@ export default function Dashboard() {
               {diaries.slice(0, 4).map((diary) => (
                 <div
                   key={diary.id}
-                  className="p-4 rounded-2xl hover:bg-rose-50/60 cursor-pointer transition-all duration-200"
+                  className="p-4 rounded-2xl hover:bg-[#f5efea]/60 cursor-pointer transition-all duration-200"
                   onClick={() => navigate(`/diaries/${diary.id}`)}
                 >
                   <div className="flex justify-between items-start mb-1">
@@ -297,7 +300,7 @@ export default function Dashboard() {
                   {(diary.emotion_tags ?? []).length > 0 && (
                     <div className="flex gap-1.5 mt-2 flex-wrap">
                       {(diary.emotion_tags ?? []).map((tag, i) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 bg-rose-100 text-rose-400 rounded-full">
+                        <span key={i} className="text-[10px] px-2 py-0.5 bg-[#e7dbd5] text-[#b56f61] rounded-full">
                           {tag}
                         </span>
                       ))}
@@ -321,3 +324,5 @@ export default function Dashboard() {
     </div>
   )
 }
+
+

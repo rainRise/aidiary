@@ -2,9 +2,10 @@
 AI分析相关的API端点
 """
 from typing import Optional
+from datetime import timedelta, date
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, and_, desc
 
 from app.db import get_db
 from app.schemas.ai import (
@@ -17,7 +18,8 @@ from app.agents.orchestrator import agent_orchestrator
 from app.agents.llm import deepseek_client
 from app.core.deps import get_current_active_user
 from app.models.database import User
-from app.models.diary import Diary
+from app.models.diary import Diary, TimelineEvent
+from app.schemas.diary import TimelineEventCreate
 from app.services.diary_service import diary_service, timeline_service
 
 router = APIRouter(prefix="/ai", tags=["AI分析"])
@@ -76,42 +78,101 @@ async def analyze_diary(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    对日记进行完整的AI分析
+    对用户多篇日记进行整合AI分析（用户级）
 
     分析流程：
-    1. 收集用户上下文
-    2. 提取时间轴事件
+    1. 聚合分析窗口内的多篇日记
+    2. 收集用户上下文与时间轴
     3. 萨提亚冰山五层分析
     4. 生成疗愈回复
     5. 生成朋友圈文案
     """
-    # 获取日记
-    diary = await diary_service.get_diary(db, request.diary_id, current_user.id)
+    anchor_diary = None
+    if request.diary_id is not None:
+        anchor_diary = await diary_service.get_diary(db, request.diary_id, current_user.id)
+        if not anchor_diary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="锚点日记不存在"
+            )
 
-    if not diary:
+    anchor_date = anchor_diary.diary_date if anchor_diary else date.today()
+    start_date = anchor_date - timedelta(days=request.window_days - 1)
+
+    diaries_result = await db.execute(
+        select(Diary).where(
+            and_(
+                Diary.user_id == current_user.id,
+                Diary.diary_date >= start_date,
+                Diary.diary_date <= anchor_date,
+            )
+        ).order_by(desc(Diary.diary_date), desc(Diary.created_at)).limit(request.max_diaries)
+    )
+    diaries = list(diaries_result.scalars().all())
+
+    # 如果窗口内没有数据，退化为取最近N篇
+    if not diaries:
+        fallback_result = await db.execute(
+            select(Diary).where(
+                Diary.user_id == current_user.id
+            ).order_by(desc(Diary.diary_date), desc(Diary.created_at)).limit(request.max_diaries)
+        )
+        diaries = list(fallback_result.scalars().all())
+
+    if not diaries:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="日记不存在"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="暂无可分析的日记，请先写至少一篇日记"
         )
 
+    # 按时间正序组织，构建用户级整合语料
+    diaries_sorted = list(sorted(diaries, key=lambda d: (d.diary_date, d.created_at)))
+    combined_sections = []
+    for d in diaries_sorted:
+        content = (d.content or "").strip()
+        if len(content) > 1200:
+            content = content[:1200] + "..."
+        combined_sections.append(
+            f"【日期】{d.diary_date}\n"
+            f"【标题】{d.title or '无标题'}\n"
+            f"【情绪标签】{', '.join(d.emotion_tags or []) or '无'}\n"
+            f"【重要性】{d.importance_score}/10\n"
+            f"【正文】\n{content}"
+        )
+    integrated_content = "\n\n---\n\n".join(combined_sections)
+
     # 获取用户画像（简化版，实际应该从user_profiles表获取）
+    emotion_counter = {}
+    importance_sum = 0
+    for d in diaries_sorted:
+        importance_sum += d.importance_score or 5
+        for tag in (d.emotion_tags or []):
+            emotion_counter[tag] = emotion_counter.get(tag, 0) + 1
+    top_emotions = [k for k, _ in sorted(emotion_counter.items(), key=lambda x: x[1], reverse=True)[:3]]
+    avg_importance = round(importance_sum / max(len(diaries_sorted), 1), 2)
+
     user_profile = {
         "username": current_user.username or "用户",
         "identity_tag": "通用",
         "current_state": "正常",
         "personality_type": "INFP",
         "social_style": "真实",
-        "catchphrases": []
+        "catchphrases": [],
+        "analysis_scope": "user_integrated",
+        "diary_count": len(diaries_sorted),
+        "top_emotions": top_emotions,
+        "avg_importance": avg_importance,
+        "window_start": str(diaries_sorted[0].diary_date),
+        "window_end": str(diaries_sorted[-1].diary_date),
     }
 
-    # 获取时间轴上下文（最近7天）
-    from datetime import timedelta, date
-    start_date = date.today() - timedelta(days=7)
+    # 获取时间轴上下文（与分析窗口保持一致）
     timeline_events = await timeline_service.get_timeline(
         db,
         current_user.id,
         start_date=start_date,
-        limit=10
+        end_date=anchor_date,
+        limit=min(max(request.max_diaries, 20), 200)
     )
 
     timeline_context = [
@@ -127,9 +188,9 @@ async def analyze_diary(
     try:
         state = await agent_orchestrator.analyze_diary(
             user_id=current_user.id,
-            diary_id=request.diary_id,
-            diary_content=diary.content,
-            diary_date=diary.diary_date,
+            diary_id=anchor_diary.id if anchor_diary else diaries_sorted[-1].id,
+            diary_content=integrated_content,
+            diary_date=anchor_date,
             user_profile=user_profile,
             timeline_context=timeline_context
         )
@@ -143,6 +204,62 @@ async def analyze_diary(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"分析失败: {state['error']}"
             )
+
+        # 持久化分析结果：更新/创建时间轴事件 + 标记日记已分析
+        try:
+            timeline_event = state.get("timeline_event") or {}
+            summary = (timeline_event.get("event_summary") or "").strip()
+            if summary:
+                # 用户级整合分析：将事件挂到锚点日记（有锚点）或最新日记（无锚点）
+                target_diary = anchor_diary or diaries_sorted[-1]
+                existing_event_result = await db.execute(
+                    select(TimelineEvent).where(
+                        TimelineEvent.diary_id == target_diary.id
+                    ).limit(1)
+                )
+                existing_event = existing_event_result.scalar_one_or_none()
+
+                if existing_event:
+                    existing_event.event_date = target_diary.diary_date
+                    existing_event.event_summary = summary
+                    existing_event.emotion_tag = timeline_event.get("emotion_tag")
+                    existing_event.importance_score = int(timeline_event.get("importance_score") or 5)
+                    existing_event.event_type = timeline_event.get("event_type")
+                    existing_event.related_entities = timeline_event.get("related_entities") or {}
+                else:
+                    event_data = TimelineEventCreate(
+                        diary_id=target_diary.id,
+                        event_date=target_diary.diary_date,
+                        event_summary=summary,
+                        emotion_tag=timeline_event.get("emotion_tag"),
+                        importance_score=int(timeline_event.get("importance_score") or 5),
+                        event_type=timeline_event.get("event_type"),
+                        related_entities=timeline_event.get("related_entities") or {},
+                    )
+                    await timeline_service.create_event(db, current_user.id, event_data)
+
+            # 将窗口内日记都标记为已分析，体现“整合分析”语义
+            for d in diaries_sorted:
+                d.is_analyzed = True
+            await db.commit()
+            if anchor_diary:
+                await db.refresh(anchor_diary)
+        except Exception as persist_err:
+            # 不阻断主分析结果返回，但把告警写入metadata
+            await db.rollback()
+            result.setdefault("metadata", {})
+            result["metadata"]["persist_warning"] = str(persist_err)
+
+        result.setdefault("metadata", {})
+        result["metadata"]["analysis_scope"] = "user_integrated"
+        result["metadata"]["analyzed_diary_count"] = len(diaries_sorted)
+        result["metadata"]["analyzed_period"] = {
+            "start_date": str(diaries_sorted[0].diary_date),
+            "end_date": str(diaries_sorted[-1].diary_date),
+            "anchor_date": str(anchor_date),
+            "window_days": request.window_days,
+        }
+        result["metadata"]["analyzed_diary_ids"] = [d.id for d in diaries_sorted]
 
         return result
 

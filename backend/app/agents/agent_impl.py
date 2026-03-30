@@ -22,15 +22,88 @@ from app.agents.prompts import (
 from app.agents.llm import get_llm, get_analytical_llm, get_creative_llm
 
 
+def _parse_json_payload(raw: str) -> Dict[str, Any]:
+    """
+    尽最大可能从LLM响应中提取JSON对象。
+    兼容：纯JSON、```json 代码块、前后夹杂说明文字。
+    """
+    if raw is None:
+        raise ValueError("LLM返回为空（None）")
+
+    text = raw.strip().lstrip("\ufeff")
+    if not text:
+        raise ValueError("LLM返回为空字符串")
+
+    # 1) 直接解析
+    try:
+        obj = json.loads(text)
+        if isinstance(obj, dict):
+            return obj
+    except json.JSONDecodeError:
+        pass
+
+    # 2) markdown 代码块
+    fenced = re.search(r"```(?:json)?\s*([\s\S]*?)```", text, re.IGNORECASE)
+    if fenced:
+        block = fenced.group(1).strip()
+        try:
+            obj = json.loads(block)
+            if isinstance(obj, dict):
+                return obj
+        except json.JSONDecodeError:
+            pass
+
+    # 3) 提取第一个 JSON 对象
+    obj_match = re.search(r"\{[\s\S]*\}", text)
+    if obj_match:
+        candidate = obj_match.group(0)
+        obj = json.loads(candidate)
+        if isinstance(obj, dict):
+            return obj
+
+    raise ValueError(f"无法从LLM响应中解析JSON: {text[:240]}")
+
+
+def _begin_agent_run(state: AnalysisState, agent_code: str, agent_name: str, model: str, step: str) -> Dict[str, Any]:
+    run = {
+        "agent_code": agent_code,
+        "agent_name": agent_name,
+        "model": model,
+        "step": step,
+        "status": "running",
+        "started_at": time.time(),
+    }
+    state.setdefault("agent_runs", []).append(run)
+    return run
+
+
+def _finish_agent_run(run: Dict[str, Any], ok: bool, error: str = "") -> None:
+    ended_at = time.time()
+    run["ended_at"] = ended_at
+    run["duration_ms"] = int((ended_at - run["started_at"]) * 1000)
+    run["status"] = "success" if ok else "error"
+    if error:
+        run["error"] = error
+
+
 class ContextCollectorAgent:
     """Agent 0: 上下文收集器"""
 
     def __init__(self):
         self.llm = get_llm(temperature=0.3)
+        self.agent_code = "0"
+        self.agent_name = "Context Collector"
 
     async def collect(self, state: AnalysisState, user_profile: Dict, timeline_context: List[Dict]):
         """收集上下文信息"""
-        print("[Agent 0] 收集上下文...")
+        print(f"[Agent {self.agent_code} | {self.agent_name}] 收集上下文...")
+        run = _begin_agent_run(
+            state=state,
+            agent_code=self.agent_code,
+            agent_name=self.agent_name,
+            model=getattr(self.llm, "model", "unknown"),
+            step="context_collection",
+        )
 
         try:
             # 构建prompt
@@ -46,18 +119,20 @@ class ContextCollectorAgent:
                 HumanMessage(content=prompt)
             ]
 
-            response = await self.llm.ainvoke(messages)
-            result = json.loads(response.content)
+            response = await self.llm.ainvoke(messages, response_format="json")
+            result = _parse_json_payload(response.content)
 
             # 更新状态
             state["user_profile"] = user_profile
             state["timeline_context"] = timeline_context
 
-            print(f"[Agent 0] 上下文收集完成: {result.get('current_mood', 'N/A')}")
+            print(f"[Agent {self.agent_code} | {self.agent_name}] 上下文收集完成: {result.get('current_mood', 'N/A')}")
+            _finish_agent_run(run, ok=True)
             return state
 
         except Exception as e:
-            print(f"[Agent 0] 错误: {e}")
+            print(f"[Agent {self.agent_code} | {self.agent_name}] 错误: {e}")
+            _finish_agent_run(run, ok=False, error=str(e))
             state["user_profile"] = user_profile
             state["timeline_context"] = timeline_context
             return state
@@ -68,10 +143,19 @@ class TimelineManagerAgent:
 
     def __init__(self):
         self.llm = get_llm(temperature=0.5)
+        self.agent_code = "A"
+        self.agent_name = "Timeline Manager"
 
     async def extract_event(self, state: AnalysisState):
         """提取时间轴事件"""
-        print("[Agent A] 提取时间轴事件...")
+        print(f"[Agent {self.agent_code} | {self.agent_name}] 提取时间轴事件...")
+        run = _begin_agent_run(
+            state=state,
+            agent_code=self.agent_code,
+            agent_name=self.agent_name,
+            model=getattr(self.llm, "model", "unknown"),
+            step="timeline_extraction",
+        )
 
         try:
             prompt = TIMELINE_EXTRACTOR_PROMPT.format(
@@ -83,8 +167,8 @@ class TimelineManagerAgent:
                 HumanMessage(content=prompt)
             ]
 
-            response = await self.llm.ainvoke(messages)
-            result = json.loads(response.content)
+            response = await self.llm.ainvoke(messages, response_format="json")
+            result = _parse_json_payload(response.content)
 
             # 构建时间轴事件
             event = {
@@ -97,11 +181,13 @@ class TimelineManagerAgent:
 
             state["timeline_event"] = event
 
-            print(f"[Agent A] 事件提取完成: {event['event_summary']}")
+            print(f"[Agent {self.agent_code} | {self.agent_name}] 事件提取完成: {event['event_summary']}")
+            _finish_agent_run(run, ok=True)
             return state
 
         except Exception as e:
-            print(f"[Agent A] 错误: {e}")
+            print(f"[Agent {self.agent_code} | {self.agent_name}] 错误: {e}")
+            _finish_agent_run(run, ok=False, error=str(e))
             # 降级：创建默认事件
             state["timeline_event"] = {
                 "event_summary": "日记记录",
@@ -124,7 +210,14 @@ class SatirTherapistAgent:
 
     async def analyze_emotion_layer(self, state: AnalysisState):
         """分析情绪层（第2层）"""
-        print("[Agent B1] 分析情绪层...")
+        print("[Agent B1 | Satir Emotion Analyst] 分析情绪层...")
+        run = _begin_agent_run(
+            state=state,
+            agent_code="B1",
+            agent_name="Satir Emotion Analyst",
+            model=getattr(self.llm_emotion, "model", "unknown"),
+            step="satir_emotion",
+        )
 
         try:
             prompt = SATIR_EMOTION_PROMPT.format(
@@ -137,14 +230,16 @@ class SatirTherapistAgent:
                 HumanMessage(content=prompt)
             ]
 
-            response = await self.llm_emotion.ainvoke(messages)
-            result = json.loads(response.content)
+            response = await self.llm_emotion.ainvoke(messages, response_format="json")
+            result = _parse_json_payload(response.content)
 
             state["emotion_layer"] = result
-            print(f"[Agent B1] 情绪层分析: {result.get('surface_emotion', 'N/A')} -> {result.get('underlying_emotion', 'N/A')}")
+            print(f"[Agent B1 | Satir Emotion Analyst] 情绪层分析: {result.get('surface_emotion', 'N/A')} -> {result.get('underlying_emotion', 'N/A')}")
+            _finish_agent_run(run, ok=True)
 
         except Exception as e:
-            print(f"[Agent B1] 错误: {e}")
+            print(f"[Agent B1 | Satir Emotion Analyst] 错误: {e}")
+            _finish_agent_run(run, ok=False, error=str(e))
             state["emotion_layer"] = {
                 "surface_emotion": "未识别",
                 "underlying_emotion": "未识别",
@@ -156,7 +251,14 @@ class SatirTherapistAgent:
 
     async def analyze_belief_layer(self, state: AnalysisState):
         """分析信念层（第3-4层）"""
-        print("[Agent B2] 分析信念层...")
+        print("[Agent B2 | Satir Belief Analyst] 分析信念层...")
+        run = _begin_agent_run(
+            state=state,
+            agent_code="B2",
+            agent_name="Satir Belief Analyst",
+            model=getattr(self.llm_belief, "model", "unknown"),
+            step="satir_belief",
+        )
 
         try:
             prompt = SATIR_BELIEF_PROMPT.format(
@@ -169,8 +271,8 @@ class SatirTherapistAgent:
                 HumanMessage(content=prompt)
             ]
 
-            response = await self.llm_belief.ainvoke(messages)
-            result = json.loads(response.content)
+            response = await self.llm_belief.ainvoke(messages, response_format="json")
+            result = _parse_json_payload(response.content)
 
             state["cognitive_layer"] = {
                 "irrational_beliefs": result.get("irrational_beliefs", []),
@@ -182,10 +284,12 @@ class SatirTherapistAgent:
                 "belief_analysis": result.get("belief_analysis", "")
             }
 
-            print(f"[Agent B2] 信念层分析完成")
+            print("[Agent B2 | Satir Belief Analyst] 信念层分析完成")
+            _finish_agent_run(run, ok=True)
 
         except Exception as e:
-            print(f"[Agent B2] 错误: {e}")
+            print(f"[Agent B2 | Satir Belief Analyst] 错误: {e}")
+            _finish_agent_run(run, ok=False, error=str(e))
             state["cognitive_layer"] = {"irrational_beliefs": [], "automatic_thoughts": []}
             state["belief_layer"] = {"core_beliefs": [], "life_rules": [], "belief_analysis": ""}
 
@@ -193,7 +297,14 @@ class SatirTherapistAgent:
 
     async def analyze_existence_layer(self, state: AnalysisState):
         """分析存在层（第5层）"""
-        print("[Agent B3] 分析存在层...")
+        print("[Agent B3 | Satir Existence Analyst] 分析存在层...")
+        run = _begin_agent_run(
+            state=state,
+            agent_code="B3",
+            agent_name="Satir Existence Analyst",
+            model=getattr(self.llm_existence, "model", "unknown"),
+            step="satir_existence",
+        )
 
         try:
             # 构建完整的分析摘要
@@ -213,14 +324,16 @@ class SatirTherapistAgent:
                 HumanMessage(content=prompt)
             ]
 
-            response = await self.llm_existence.ainvoke(messages)
-            result = json.loads(response.content)
+            response = await self.llm_existence.ainvoke(messages, response_format="json")
+            result = _parse_json_payload(response.content)
 
             state["core_self_layer"] = result
-            print(f"[Agent B3] 存在层分析: {result.get('deepest_desire', 'N/A')}")
+            print(f"[Agent B3 | Satir Existence Analyst] 存在层分析: {result.get('deepest_desire', 'N/A')}")
+            _finish_agent_run(run, ok=True)
 
         except Exception as e:
-            print(f"[Agent B3] 错误: {e}")
+            print(f"[Agent B3 | Satir Existence Analyst] 错误: {e}")
+            _finish_agent_run(run, ok=False, error=str(e))
             state["core_self_layer"] = {
                 "yearnings": [],
                 "life_energy": "未知",
@@ -232,7 +345,14 @@ class SatirTherapistAgent:
 
     async def generate_response(self, state: AnalysisState):
         """生成疗愈回复（Node B4）"""
-        print("[Agent B4] 生成疗愈回复...")
+        print("[Agent B4 | Satir Responder] 生成疗愈回复...")
+        run = _begin_agent_run(
+            state=state,
+            agent_code="B4",
+            agent_name="Satir Responder",
+            model=getattr(self.llm_responder, "model", "unknown"),
+            step="satir_response",
+        )
 
         try:
             # 构建完整的冰山分析
@@ -259,10 +379,12 @@ class SatirTherapistAgent:
             therapeutic_response = response.content.strip()
 
             state["therapeutic_response"] = therapeutic_response
-            print(f"[Agent B4] 回复生成完成: {therapeutic_response[:50]}...")
+            print(f"[Agent B4 | Satir Responder] 回复生成完成: {therapeutic_response[:50]}...")
+            _finish_agent_run(run, ok=True)
 
         except Exception as e:
-            print(f"[Agent B4] 错误: {e}")
+            print(f"[Agent B4 | Satir Responder] 错误: {e}")
+            _finish_agent_run(run, ok=False, error=str(e))
             state["therapeutic_response"] = "感谢你愿意记录下这段经历。你的感受是真实的，你的经历是有意义的。"
 
         return state
@@ -273,10 +395,19 @@ class SocialContentCreatorAgent:
 
     def __init__(self):
         self.llm = get_creative_llm()
+        self.agent_code = "C"
+        self.agent_name = "Social Content Creator"
 
     async def generate_posts(self, state: AnalysisState, user_profile: Dict):
         """生成朋友圈文案"""
-        print("[Agent C] 生成朋友圈文案...")
+        print(f"[Agent {self.agent_code} | {self.agent_name}] 生成朋友圈文案...")
+        run = _begin_agent_run(
+            state=state,
+            agent_code=self.agent_code,
+            agent_name=self.agent_name,
+            model=getattr(self.llm, "model", "unknown"),
+            step="social_content_generation",
+        )
 
         try:
             prompt = SOCIAL_POST_CREATOR_PROMPT.format(
@@ -325,10 +456,12 @@ class SocialContentCreatorAgent:
                 raise ValueError(f"无法解析JSON响应: {raw[:200]}")
 
             state["social_posts"] = result.get("posts", [])
-            print(f"[Agent C] 文案生成完成: {len(state['social_posts'])}个版本")
+            print(f"[Agent {self.agent_code} | {self.agent_name}] 文案生成完成: {len(state['social_posts'])}个版本")
+            _finish_agent_run(run, ok=True)
 
         except Exception as e:
-            print(f"[Agent C] 错误: {e}")
+            print(f"[Agent {self.agent_code} | {self.agent_name}] 错误: {e}")
+            _finish_agent_run(run, ok=False, error=str(e))
             # 降级：生成简单文案
             content = state["diary_content"][:50]
             state["social_posts"] = [
