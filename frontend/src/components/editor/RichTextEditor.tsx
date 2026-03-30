@@ -8,7 +8,7 @@ import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin'
 import {
-  $getRoot, $createParagraphNode, $createTextNode, $getSelection, $isRangeSelection,
+  $getRoot, $createParagraphNode, $getSelection, $isRangeSelection,
   FORMAT_TEXT_COMMAND, SELECTION_CHANGE_COMMAND,
   COMMAND_PRIORITY_LOW, EditorState, LexicalEditor
 } from 'lexical'
@@ -17,10 +17,32 @@ import { CodeNode } from '@lexical/code'
 import { ListNode, ListItemNode } from '@lexical/list'
 import { LinkNode } from '@lexical/link'
 import { $generateHtmlFromNodes } from '@lexical/html'
-import { $convertFromMarkdownString, $convertToMarkdownString, TRANSFORMERS } from '@lexical/markdown'
+import {
+  $convertFromMarkdownString, $convertToMarkdownString,
+  TRANSFORMERS, type ElementTransformer,
+} from '@lexical/markdown'
 import { Bold, Italic, Image as ImageIcon, Loader2 } from 'lucide-react'
 import { diaryService } from '@/services/diary.service'
 import { toast } from '@/components/ui/toast'
+import { ImageNode, $createImageNode, $isImageNode } from './ImageNode'
+
+const IMAGE_TRANSFORMER: ElementTransformer = {
+  type: 'element',
+  dependencies: [ImageNode],
+  regExp: /^!\[(.*?)\]\((.+?)\)$/,
+  replace: (parentNode, _children, match) => {
+    const altText = (match[1] || '图片').trim()
+    const src = (match[2] || '').trim()
+    if (!src) return
+    parentNode.replace($createImageNode(src, altText))
+  },
+  export: (node) => {
+    if (!$isImageNode(node)) return null
+    return `![${node.getAltText() || '图片'}](${node.getSrc()})`
+  },
+}
+
+const MARKDOWN_TRANSFORMERS = [IMAGE_TRANSFORMER, ...TRANSFORMERS]
 
 // ---- Toolbar button ----
 function ToolbarBtn({
@@ -194,15 +216,15 @@ function ImageInsertPlugin({
   useEffect(() => {
     if (!pendingUrl) return
     editor.update(() => {
-      const markdownImage = `\n![图片](${pendingUrl})\n`
+      const imageNode = $createImageNode(pendingUrl, '图片')
+      const trailingParagraph = $createParagraphNode()
       const selection = $getSelection()
       if ($isRangeSelection(selection)) {
-        selection.insertText(markdownImage)
+        selection.insertNodes([imageNode, trailingParagraph])
       } else {
         const root = $getRoot()
-        const p = $createParagraphNode()
-        p.append($createTextNode(markdownImage))
-        root.append(p)
+        root.append(imageNode)
+        root.append(trailingParagraph)
       }
     })
     onInserted()
@@ -220,7 +242,7 @@ function InitialValuePlugin({ value }: { value: string }) {
     if (initialized.current || !value) return
     initialized.current = true
     editor.update(() => {
-      $convertFromMarkdownString(value, TRANSFORMERS)
+      $convertFromMarkdownString(value, MARKDOWN_TRANSFORMERS)
     })
   }, [editor, value])
 
@@ -271,7 +293,7 @@ export default function RichTextEditor({
   const initialConfig = {
     namespace: 'DiaryEditor',
     theme,
-    nodes: [HeadingNode, QuoteNode, CodeNode, ListNode, ListItemNode, LinkNode],
+    nodes: [HeadingNode, QuoteNode, CodeNode, ListNode, ListItemNode, LinkNode, ImageNode],
     onError: (error: Error) => console.error(error),
   }
 
@@ -294,7 +316,7 @@ export default function RichTextEditor({
     (editorState: EditorState, editor: LexicalEditor) => {
       editorState.read(() => {
         const root = $getRoot()
-        const markdown = $convertToMarkdownString(TRANSFORMERS)
+        const markdown = $convertToMarkdownString(MARKDOWN_TRANSFORMERS)
         const html = $generateHtmlFromNodes(editor)
         const plainText = root.getTextContent()
         onChange(markdown || plainText, html)
@@ -342,7 +364,7 @@ export default function RichTextEditor({
             ErrorBoundary={ErrorBoundary}
           />
           <HistoryPlugin />
-          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+          <MarkdownShortcutPlugin transformers={MARKDOWN_TRANSFORMERS} />
           <OnChangePlugin onChange={handleChange} />
           <InitialValuePlugin value={value} />
           <SlashCommandPlugin
