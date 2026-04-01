@@ -1,13 +1,16 @@
 """
 日记业务逻辑服务
 """
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple, Dict, Any
 from datetime import date, datetime
+import json
+import re
 from sqlalchemy import select, func, desc, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.diary import Diary, TimelineEvent
 from app.schemas.diary import DiaryCreate, DiaryUpdate, TimelineEventCreate
+from app.agents.llm import deepseek_client
 
 
 EVENT_TYPE_KEYWORDS: Dict[str, List[str]] = {
@@ -27,6 +30,37 @@ def _infer_event_type(text: str) -> str:
 
 def _safe_text(text: Optional[str]) -> str:
     return (text or "").strip()
+
+
+def _safe_parse_json(raw: str) -> Dict[str, Any]:
+    text = (raw or "").strip()
+    if not text:
+        raise ValueError("empty llm response")
+
+    try:
+        obj = json.loads(text)
+        if isinstance(obj, dict):
+            return obj
+    except Exception:
+        pass
+
+    fenced = re.search(r"```(?:json)?\s*([\s\S]*?)```", text, re.IGNORECASE)
+    if fenced:
+        try:
+            obj = json.loads(fenced.group(1).strip())
+            if isinstance(obj, dict):
+                return obj
+        except Exception:
+            pass
+
+    dec = json.JSONDecoder()
+    first = text.find("{")
+    if first != -1:
+        obj, _ = dec.raw_decode(text[first:])
+        if isinstance(obj, dict):
+            return obj
+
+    raise ValueError("cannot parse llm json")
 
 
 class DiaryService:
@@ -325,7 +359,8 @@ class TimelineService:
         self,
         db: AsyncSession,
         user_id: int,
-        diary: Diary
+        diary: Diary,
+        force_overwrite_ai: bool = False
     ) -> TimelineEvent:
         """
         根据日记自动创建/更新时间轴事件（幂等，按 diary_id 唯一）。
@@ -342,6 +377,15 @@ class TimelineService:
         existing = existing_result.scalar_one_or_none()
 
         if existing:
+            current_source = ((existing.related_entities or {}).get("source") or "").strip()
+            # AI提炼结果优先：默认不被规则重建覆盖
+            if current_source == "ai_analysis" and not force_overwrite_ai:
+                if existing.event_date != payload["event_date"]:
+                    existing.event_date = payload["event_date"]
+                    await db.commit()
+                    await db.refresh(existing)
+                return existing
+
             existing.event_date = payload["event_date"]
             existing.event_summary = payload["event_summary"]
             existing.emotion_tag = payload["emotion_tag"]
@@ -362,6 +406,86 @@ class TimelineService:
             related_entities=payload["related_entities"],
         )
         return await self.create_event(db, user_id, event_data)
+
+    async def refine_event_from_diary_with_ai(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        diary_id: int
+    ) -> Optional[TimelineEvent]:
+        """
+        异步AI精炼单篇日记对应事件（生成更自然摘要与更准类型）。
+        """
+        diary_result = await db.execute(
+            select(Diary).where(
+                and_(
+                    Diary.id == diary_id,
+                    Diary.user_id == user_id
+                )
+            ).limit(1)
+        )
+        diary = diary_result.scalar_one_or_none()
+        if not diary:
+            return None
+
+        # 确保先有基础事件（规则法）
+        event = await self.upsert_event_from_diary(db, user_id, diary)
+
+        title = _safe_text(diary.title) or "无标题"
+        content = _safe_text(diary.content)
+        prompt = (
+            f"标题：{title}\n"
+            f"日期：{diary.diary_date}\n"
+            f"情绪标签：{', '.join(diary.emotion_tags or []) or '无'}\n"
+            f"重要性：{int(diary.importance_score or 5)}/10\n"
+            f"内容：\n{content[:1800]}\n\n"
+            "请输出JSON：\n"
+            "{\n"
+            '  "event_summary":"50字以内中文事件摘要，具体不空泛",\n'
+            '  "emotion_tag":"一个情绪标签（可为空）",\n'
+            '  "importance_score":1-10整数,\n'
+            '  "event_type":"work|relationship|health|achievement|other"\n'
+            "}\n"
+            "要求：不编造，不写“作者”，不使用模板腔。"
+        )
+
+        try:
+            raw = await deepseek_client.chat_with_system(
+                system_prompt="你是日记时间轴提炼助手，只输出JSON。",
+                user_prompt=prompt,
+                temperature=0.3,
+                response_format="json",
+            )
+            parsed = _safe_parse_json(raw)
+        except Exception:
+            return event
+
+        summary = _safe_text(parsed.get("event_summary"))[:120]
+        emotion_tag = _safe_text(parsed.get("emotion_tag")) or None
+        event_type = _safe_text(parsed.get("event_type")) or "other"
+        if event_type not in {"work", "relationship", "health", "achievement", "other"}:
+            event_type = "other"
+        try:
+            importance_score = int(parsed.get("importance_score") or event.importance_score or 5)
+        except Exception:
+            importance_score = int(event.importance_score or 5)
+        importance_score = max(1, min(10, importance_score))
+
+        if summary:
+            event.event_summary = summary
+        event.emotion_tag = emotion_tag or event.emotion_tag
+        event.event_type = event_type
+        event.importance_score = importance_score
+
+        entities = event.related_entities or {}
+        entities["source"] = "ai_analysis"
+        entities["source_label"] = "AI提炼事件"
+        entities["ai_refined_at"] = datetime.utcnow().isoformat()
+        event.related_entities = entities
+
+        await db.commit()
+        await db.refresh(event)
+        return event
 
     async def rebuild_events_for_user(
         self,

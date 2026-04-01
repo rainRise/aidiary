@@ -3,12 +3,13 @@
 """
 import os
 import uuid
+import asyncio
 from typing import Optional
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import get_db
+from app.db import get_db, async_session_maker
 
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "uploads", "diary_images")
 from app.schemas.diary import (
@@ -23,6 +24,27 @@ from app.core.deps import get_current_active_user
 from app.models.database import User
 
 router = APIRouter(prefix="/diaries", tags=["日记"])
+
+
+async def _ai_refine_event_task(user_id: int, diary_id: int):
+    try:
+        async with async_session_maker() as session:
+            await timeline_service.refine_event_from_diary_with_ai(
+                db=session,
+                user_id=user_id,
+                diary_id=diary_id,
+            )
+    except Exception as e:
+        print(f"[Timeline AI Refine] warning user={user_id} diary={diary_id}: {e}")
+
+
+def _schedule_ai_refine(user_id: int, diary_id: int):
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_ai_refine_event_task(user_id, diary_id))
+    except RuntimeError:
+        # 兜底：若当前无运行中的event loop，则忽略异步精炼
+        pass
 
 
 # ==================== 日记CRUD ====================
@@ -49,6 +71,7 @@ async def create_diary(
     except Exception as e:
         # 不阻断主流程，避免因为时间轴失败导致日记无法保存
         print(f"[Timeline Auto Upsert] create_diary warning: {e}")
+    _schedule_ai_refine(current_user.id, diary.id)
     return DiaryResponse.model_validate(diary)
 
 
@@ -137,6 +160,7 @@ async def update_diary(
         await timeline_service.upsert_event_from_diary(db, current_user.id, diary)
     except Exception as e:
         print(f"[Timeline Auto Upsert] update_diary warning: {e}")
+    _schedule_ai_refine(current_user.id, diary.id)
 
     return DiaryResponse.model_validate(diary)
 
