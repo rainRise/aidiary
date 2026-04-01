@@ -34,11 +34,25 @@ export interface ComprehensiveAnalysisResponse {
     window_days: number
     analyzed_diary_count: number
     retrieved_chunk_count: number
+    retrieval_strategy?: string
+    ranking_formula?: string
     period: {
       start_date: string
       end_date: string
     }
   }
+}
+
+export interface DailyGuidanceResponse {
+  question: string
+  source: 'ai' | 'fallback' | string
+  metadata: Record<string, any>
+}
+
+export interface SocialStyleSamplesResponse {
+  total: number
+  samples: string[]
+  metadata: Record<string, any>
 }
 
 export interface TimelineEventAnalysis {

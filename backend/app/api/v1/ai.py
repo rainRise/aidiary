@@ -15,12 +15,15 @@ from app.schemas.ai import (
     TitleSuggestionResponse,
     ComprehensiveAnalysisRequest,
     ComprehensiveAnalysisResponse,
+    DailyGuidanceResponse,
+    SocialStyleSamplesRequest,
+    SocialStyleSamplesResponse,
 )
 from app.agents.orchestrator import agent_orchestrator
 from app.agents.llm import deepseek_client
 from app.core.deps import get_current_active_user
 from app.models.database import User
-from app.models.diary import Diary, TimelineEvent, AIAnalysis
+from app.models.diary import Diary, TimelineEvent, AIAnalysis, SocialPostSample
 from app.schemas.diary import TimelineEventCreate
 from app.services.diary_service import diary_service, timeline_service
 from app.services.rag_service import diary_rag_service
@@ -59,6 +62,22 @@ def _safe_parse_json(raw: str) -> dict:
             return parsed
 
     raise ValueError("无法解析模型JSON输出")
+
+
+def _normalize_samples(samples: list[str], limit: int = 50) -> list[str]:
+    normalized = []
+    seen = set()
+    for s in samples or []:
+        text = " ".join((s or "").strip().split())
+        if len(text) < 6:
+            continue
+        if len(text) > 300:
+            text = text[:300]
+        if text in seen:
+            continue
+        seen.add(text)
+        normalized.append(text)
+    return normalized[:limit]
 
 
 @router.post("/generate-title", response_model=TitleSuggestionResponse, summary="AI生成日记标题")
@@ -106,6 +125,145 @@ async def generate_title(
         )
 
 
+@router.get("/daily-guidance", response_model=DailyGuidanceResponse, summary="获取每日个性化引导问题")
+async def get_daily_guidance(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    基于用户近期日记上下文，生成当天可直接写作的个性化引导问题。
+    """
+    fallback_questions = [
+        "今天有哪个瞬间让你停下来想了很久？",
+        "今天最想留住的一个感受是什么？",
+        "你今天在哪件小事上看见了自己的变化？",
+        "今天有没有一个没说出口但想记录的念头？",
+        "如果给今天写一句旁白，你会写什么？",
+    ]
+
+    end_date = date.today()
+    start_date = end_date - timedelta(days=30)
+    diaries_result = await db.execute(
+        select(Diary).where(
+            and_(
+                Diary.user_id == current_user.id,
+                Diary.diary_date >= start_date,
+                Diary.diary_date <= end_date,
+            )
+        ).order_by(desc(Diary.diary_date), desc(Diary.created_at)).limit(12)
+    )
+    diaries = list(diaries_result.scalars().all())
+    recent_context = "\n".join(
+        [
+            f"- {d.diary_date} | 标题:{d.title or '无标题'} | 情绪:{', '.join(d.emotion_tags or []) or '无'} | 摘要:{(d.content or '')[:90]}"
+            for d in diaries
+        ]
+    ) or "暂无历史记录"
+
+    system_prompt = (
+        "你是一个温和、具体、不过度鸡汤的中文写作引导助手。"
+        "目标是给用户一个当下就能开写的问题。"
+        "只输出JSON，不要解释。"
+    )
+    user_prompt = (
+        f"用户信息：用户名={current_user.username or '用户'}，社交风格={current_user.social_style or '未设置'}，"
+        f"当前状态={current_user.current_state or '未设置'}\n"
+        f"近期记录：\n{recent_context}\n\n"
+        "请生成1个问题，要求：\n"
+        "1) 16-30字，必须以问号结尾\n"
+        "2) 具体、可回答，不空泛\n"
+        "3) 避免“你要/应该/必须”等说教语气\n\n"
+        "输出JSON：{\"question\":\"...\"}"
+    )
+
+    try:
+        raw = await deepseek_client.chat_with_system(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            temperature=0.75,
+            response_format="json",
+        )
+        parsed = _safe_parse_json(raw)
+        question = (parsed.get("question") or "").strip()
+        if not question:
+            raise ValueError("问题为空")
+        if not question.endswith(("？", "?")):
+            question += "？"
+        return DailyGuidanceResponse(
+            question=question,
+            source="ai",
+            metadata={
+                "recent_diary_count": len(diaries),
+                "period": {"start_date": str(start_date), "end_date": str(end_date)},
+            },
+        )
+    except Exception:
+        q = fallback_questions[date.today().day % len(fallback_questions)]
+        return DailyGuidanceResponse(
+            question=q,
+            source="fallback",
+            metadata={"recent_diary_count": len(diaries)},
+        )
+
+
+@router.get("/social-style-samples", response_model=SocialStyleSamplesResponse, summary="获取朋友圈风格样本")
+async def get_social_style_samples(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(SocialPostSample).where(
+            SocialPostSample.user_id == current_user.id
+        ).order_by(desc(SocialPostSample.created_at)).limit(200)
+    )
+    rows = list(result.scalars().all())
+    samples = [r.content for r in rows]
+    return SocialStyleSamplesResponse(
+        total=len(samples),
+        samples=samples,
+        metadata={"max_recommended": 50},
+    )
+
+
+@router.put("/social-style-samples", response_model=SocialStyleSamplesResponse, summary="上传朋友圈风格样本")
+async def upsert_social_style_samples(
+    payload: SocialStyleSamplesRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    incoming = _normalize_samples(payload.samples, limit=80)
+    if not incoming:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="有效样本为空，请至少提供1条（每条不少于6字）"
+        )
+
+    existing_result = await db.execute(
+        select(SocialPostSample).where(SocialPostSample.user_id == current_user.id).order_by(desc(SocialPostSample.created_at))
+    )
+    existing_rows = list(existing_result.scalars().all())
+    existing = [r.content for r in existing_rows]
+
+    if payload.replace:
+        for row in existing_rows:
+            await db.delete(row)
+        merged = incoming[:50]
+    else:
+        merged = _normalize_samples(existing + incoming, limit=50)
+        for row in existing_rows:
+            await db.delete(row)
+
+    for content in merged:
+        db.add(SocialPostSample(user_id=current_user.id, content=content))
+
+    await db.commit()
+    return SocialStyleSamplesResponse(
+        total=len(merged),
+        samples=merged,
+        metadata={"replace_mode": payload.replace},
+    )
+
+
 @router.post("/comprehensive-analysis", response_model=ComprehensiveAnalysisResponse, summary="用户级综合分析（RAG）")
 async def comprehensive_analysis(
     request: ComprehensiveAnalysisRequest,
@@ -145,6 +303,8 @@ async def comprehensive_analysis(
             "diary_date": str(d.diary_date),
             "title": d.title or "无标题",
             "content": d.content or "",
+            "importance_score": d.importance_score or 5,
+            "emotion_tags": d.emotion_tags or [],
         }
         for d in diaries_sorted
     ]
@@ -158,23 +318,30 @@ async def comprehensive_analysis(
         ("关系主题", "朋友 家人 同事 导师 关系 冲突 支持"),
     ]
 
-    evidence = []
-    seen = set()
+    candidates = []
     for reason, q in queries:
-        for item in diary_rag_service.retrieve(chunks, q, top_k=4):
-            key = (item["diary_id"], item["snippet"])
-            if key in seen:
-                continue
-            seen.add(key)
-            evidence.append({**item, "reason": reason})
-            if len(evidence) >= 18:
-                break
-        if len(evidence) >= 18:
-            break
+        raw_hits = diary_rag_service.retrieve(chunks, q, top_k=8, source_types={"raw"})
+        summary_hits = diary_rag_service.retrieve(chunks, q, top_k=4, source_types={"summary"})
+        candidates.extend([{**item, "reason": reason} for item in (raw_hits + summary_hits)])
+
+    evidence = diary_rag_service.deduplicate_evidence(
+        candidates,
+        max_total=18,
+        max_per_diary=2,
+        per_reason_limit=3,
+        similarity_threshold=0.72,
+    )
+    if not evidence:
+        fallback_hits = diary_rag_service.retrieve(chunks, "最近的重要事件和情绪变化", top_k=10)
+        evidence = [{**item, "reason": "综合回退"} for item in fallback_hits]
 
     evidence_text = "\n".join(
         [
-            f"[{i+1}] 日期:{e['diary_date']} diary_id:{e['diary_id']} 标题:{e['title']} 相关性:{e['score']} 用途:{e['reason']}\n片段:{e['snippet']}"
+            (
+                f"[{i+1}] 日期:{e['diary_date']} diary_id:{e['diary_id']} 标题:{e['title']} "
+                f"相关性:{e['score']} 用途:{e['reason']} 来源:{'日摘要' if e.get('source_type') == 'summary' else '原文片段'}\n"
+                f"片段:{e['snippet']}"
+            )
             for i, e in enumerate(evidence)
         ]
     )
@@ -229,6 +396,8 @@ async def comprehensive_analysis(
             "window_days": request.window_days,
             "analyzed_diary_count": len(diaries_sorted),
             "retrieved_chunk_count": len(evidence),
+            "retrieval_strategy": "hybrid_lexical_weighted(raw+summary)",
+            "ranking_formula": "final=bm25+recency+importance+emotion_intensity+repetition+people_hit",
             "period": {"start_date": str(start_date), "end_date": str(end_date)},
         },
     )
@@ -611,32 +780,88 @@ async def generate_social_posts(
             detail="日记不存在"
         )
 
-    # 简化实现：返回模拟文案
-    content_preview = diary.content[:50] + "..." if len(diary.content) > 50 else diary.content
+    samples_result = await db.execute(
+        select(SocialPostSample).where(
+            SocialPostSample.user_id == current_user.id
+        ).order_by(desc(SocialPostSample.created_at)).limit(50)
+    )
+    sample_rows = list(samples_result.scalars().all())
+    style_samples = [r.content for r in sample_rows]
+
+    fewshot_text = "\n".join(
+        [f"{idx + 1}. {text[:180]}" for idx, text in enumerate(style_samples[:20])]
+    ) or "（暂无样本）"
+
+    catchphrases = ", ".join((current_user.catchphrases or [])[:8]) or "无"
+    system_prompt = (
+        "你是中文社交文案润色助手。"
+        "任务是把日记改写成更像用户本人会发的朋友圈，不要AI腔。"
+        "必须遵守：不编造事实；不夸张鸡汤；语气自然；允许口语和留白。"
+        "只输出JSON。"
+    )
+    user_prompt = (
+        f"用户画像：社交风格={current_user.social_style or '真实自然'}；当前状态={current_user.current_state or '未设置'}；"
+        f"常用表达={catchphrases}\n\n"
+        "用户历史真实文案样本（用于模仿语气与断句，不可照抄）：\n"
+        f"{fewshot_text}\n\n"
+        f"本次日记标题：{diary.title or '无标题'}\n"
+        f"本次日记内容：\n{(diary.content or '')[:2200]}\n\n"
+        "请生成3条朋友圈文案，输出JSON：\n"
+        "{\n"
+        '  "social_posts": [\n'
+        '    {"version":"A","style":"简洁版","content":"..."},\n'
+        '    {"version":"B","style":"情感版","content":"..."},\n'
+        '    {"version":"C","style":"生活感版","content":"..."}\n'
+        "  ]\n"
+        "}\n"
+        "要求：\n"
+        "1) 每条60-150字；\n"
+        "2) 贴近日常中文表达，可有轻微口语；\n"
+        "3) 不要“人生大道理模板句”。"
+    )
+
+    social_posts = []
+    try:
+        raw = await deepseek_client.chat_with_system(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            temperature=0.75,
+            response_format="json",
+        )
+        parsed = _safe_parse_json(raw)
+        items = parsed.get("social_posts") or []
+        if isinstance(items, list):
+            for idx, item in enumerate(items[:3]):
+                content = str((item or {}).get("content") or "").strip()
+                if not content:
+                    continue
+                social_posts.append({
+                    "version": str((item or {}).get("version") or chr(ord("A") + idx)),
+                    "style": str((item or {}).get("style") or "自然版"),
+                    "content": content,
+                })
+    except Exception:
+        social_posts = []
+
+    if len(social_posts) < 3:
+        content_preview = diary.content[:120] + "..." if len(diary.content) > 120 else diary.content
+        fallback = [
+            {"version": "A", "style": "简洁版", "content": content_preview},
+            {"version": "B", "style": "情感版", "content": f"{content_preview}\n今天先记到这里。"},
+            {"version": "C", "style": "生活感版", "content": f"关于{diary.title or '今天'}，慢慢来，也挺好。"},
+        ]
+        for item in fallback:
+            if len(social_posts) >= 3:
+                break
+            social_posts.append(item)
 
     return {
         "diary_id": diary.id,
-        "social_posts": [
-            {
-                "version": "A",
-                "style": "简洁版",
-                "content": content_preview
-            },
-            {
-                "version": "B",
-                "style": "完整版",
-                "content": diary.content[:100] if len(diary.content) > 100 else diary.content
-            },
-            {
-                "version": "C",
-                "style": "感悟版",
-                "content": f"关于{diary.title or '今天'}的一些感悟"
-            }
-        ],
+        "social_posts": social_posts[:3],
         "metadata": {
-            "generation_type": "social_only",
-            "processing_time": 0
-        }
+            "generation_type": "social_only_fewshot",
+            "style_sample_count": len(style_samples),
+        },
     }
 
 

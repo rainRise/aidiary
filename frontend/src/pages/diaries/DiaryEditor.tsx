@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useDiaryStore } from '@/store/diaryStore'
 import { toast } from '@/components/ui/toast'
-import { PenLine, Calendar, MessageCircle, Star, Smile, CloudSun, AlertCircle, Trophy, HeartHandshake, HelpCircle, Sparkles, Battery, Heart, Angry, Frown, PartyPopper, ChevronRight } from 'lucide-react'
+import { PenLine, Calendar, MessageCircle, Star, Smile, CloudSun, AlertCircle, Trophy, HeartHandshake, HelpCircle, Sparkles, Battery, Heart, Angry, Frown, PartyPopper, ChevronRight, RefreshCw } from 'lucide-react'
 import RichTextEditor from '@/components/editor/RichTextEditor'
 import { aiService } from '@/services/ai.service'
 import { diaryService } from '@/services/diary.service'
@@ -51,6 +51,9 @@ export default function DiaryEditor() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false)
   const [isInitializing, setIsInitializing] = useState(false)
+  const [guidedQuestion, setGuidedQuestion] = useState(GUIDED_QUESTIONS[new Date().getDate() % GUIDED_QUESTIONS.length])
+  const [guidanceSource, setGuidanceSource] = useState<'ai' | 'fallback'>('fallback')
+  const [isLoadingGuidance, setIsLoadingGuidance] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -73,8 +76,26 @@ export default function DiaryEditor() {
     init()
   }, [id, isEditMode, navigate])
 
-  // 每日引导问题
-  const guidedQuestion = GUIDED_QUESTIONS[new Date().getDate() % GUIDED_QUESTIONS.length]
+  const loadDailyGuidance = useCallback(async () => {
+    try {
+      setIsLoadingGuidance(true)
+      const result = await aiService.getDailyGuidance()
+      const question = (result.question || '').trim()
+      if (!question) throw new Error('empty question')
+      setGuidedQuestion(question)
+      setGuidanceSource(result.source === 'ai' ? 'ai' : 'fallback')
+    } catch (error) {
+      const fallback = GUIDED_QUESTIONS[new Date().getDate() % GUIDED_QUESTIONS.length]
+      setGuidedQuestion(fallback)
+      setGuidanceSource('fallback')
+    } finally {
+      setIsLoadingGuidance(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadDailyGuidance()
+  }, [loadDailyGuidance])
 
   const toggleEmotionTag = (tag: string) => {
     setEmotionTags((prev) =>
@@ -220,7 +241,17 @@ export default function DiaryEditor() {
             <div className="flex-1 min-w-0">
               <p className="text-xs text-stone-400 mb-1">今日思考</p>
               <p className="text-sm text-stone-600 leading-6">{guidedQuestion}</p>
+              <p className="text-[11px] text-stone-300 mt-1">{guidanceSource === 'ai' ? 'AI个性化问题' : '系统引导问题'}</p>
             </div>
+            <button
+              type="button"
+              onClick={() => void loadDailyGuidance()}
+              disabled={isLoadingGuidance}
+              className="shrink-0 h-7 w-7 rounded-lg border border-[#e7dbd5] bg-white text-stone-400 hover:text-stone-600 hover:bg-[#f8f5f2] transition-colors disabled:opacity-50 flex items-center justify-center"
+              title="换一题"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingGuidance ? 'animate-spin' : ''}`} />
+            </button>
             <button
               type="button"
               onClick={() => setTitle(guidedQuestion)}

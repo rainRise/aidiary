@@ -7,9 +7,10 @@ import { toast } from '@/components/ui/toast'
 import { aiService } from '@/services/ai.service'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { BookOpen, Calendar, Star, MessageCircle, FileText, Loader2, FilePenLine } from 'lucide-react'
+import { BookOpen, Calendar, Star, MessageCircle, FileText, Loader2, FilePenLine, NotebookPen } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { SocialPost } from '@/types/analysis'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 function renderInline(text: string): ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean)
@@ -74,6 +75,7 @@ export default function DiaryDetail() {
   const navigate = useNavigate()
   const { currentDiary, fetchDiary, deleteDiary } = useDiaryStore()
   const [isLoading, setIsLoading] = useState(true)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -94,20 +96,37 @@ export default function DiaryDetail() {
 
   const handleDelete = async () => {
     if (!currentDiary) return
-
-    if (confirm(`确定要删除日记《${currentDiary.title}》吗？`)) {
-      try {
-        await deleteDiary(currentDiary.id)
-        navigate('/diaries')
-      } catch (error) {
-        toast('删除失败', 'error')
-      }
+    try {
+      await deleteDiary(currentDiary.id)
+      navigate('/diaries')
+    } catch (error) {
+      toast('删除失败', 'error')
     }
   }
 
   const emotionTags = currentDiary?.emotion_tags ?? []
   const [isGeneratingPosts, setIsGeneratingPosts] = useState(false)
   const [socialPosts, setSocialPosts] = useState<SocialPost[]>([])
+  const [styleSampleText, setStyleSampleText] = useState('')
+  const [styleSampleCount, setStyleSampleCount] = useState(0)
+  const [isLoadingSamples, setIsLoadingSamples] = useState(false)
+  const [isSavingSamples, setIsSavingSamples] = useState(false)
+
+  const loadStyleSamples = async () => {
+    try {
+      setIsLoadingSamples(true)
+      const result = await aiService.getSocialStyleSamples()
+      setStyleSampleCount(result.total || 0)
+    } catch (_err) {
+      // 不阻断主流程
+    } finally {
+      setIsLoadingSamples(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadStyleSamples()
+  }, [])
 
   const handleGenerateSocialPosts = async () => {
     if (!currentDiary) return
@@ -126,6 +145,29 @@ export default function DiaryDetail() {
   const copyPost = (content: string) => {
     navigator.clipboard.writeText(content)
     toast('已复制到剪贴板', 'success')
+  }
+
+  const handleSaveStyleSamples = async () => {
+    const parsed = styleSampleText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length >= 6)
+      .slice(0, 80)
+    if (parsed.length === 0) {
+      toast('请粘贴至少1条历史文案（每条不少于6字）', 'error')
+      return
+    }
+    try {
+      setIsSavingSamples(true)
+      const result = await aiService.saveSocialStyleSamples(parsed, true)
+      setStyleSampleCount(result.total || parsed.length)
+      setStyleSampleText('')
+      toast(`已导入 ${result.total} 条风格样本`, 'success')
+    } catch (e: any) {
+      toast(e?.response?.data?.detail || '保存风格样本失败', 'error')
+    } finally {
+      setIsSavingSamples(false)
+    }
   }
 
   if (isLoading) {
@@ -155,6 +197,20 @@ export default function DiaryDetail() {
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(158deg, #f8f5ef 0%, #f2eef5 58%, #f5f2ee 100%)' }}>
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        title="确定删除这篇日记吗？"
+        description={currentDiary ? <>删除后不可恢复：<span className="font-medium text-stone-700">《{currentDiary.title || '无标题'}》</span></> : undefined}
+        confirmText="确认删除"
+        cancelText="我再想想"
+        danger
+        onCancel={() => setDeleteDialogOpen(false)}
+        onConfirm={() => {
+          setDeleteDialogOpen(false)
+          void handleDelete()
+        }}
+      />
+
       {/* 顶部导航 */}
       <header className="sticky top-0 z-50 backdrop-blur-xl border-b border-stone-200/70" style={{ background: 'rgba(248,245,239,0.88)' }}>
         <div className="max-w-3xl mx-auto px-6">
@@ -239,6 +295,34 @@ export default function DiaryDetail() {
             <p className="text-xs text-stone-400 mb-4 leading-5">
               基于这篇日记，生成适合今天发布的多版本文案
             </p>
+
+            <div className="mb-4 p-3 rounded-2xl bg-white/70 border border-[#e7dbd5]">
+              <div className="flex items-center gap-2 mb-2">
+                <NotebookPen className="w-3.5 h-3.5 text-[#b56f61]" />
+                <span className="text-xs font-medium text-stone-600">喂养我的旧文案（去 AI 味）</span>
+                <span className="ml-auto text-[11px] text-stone-400">
+                  {isLoadingSamples ? '读取中...' : `已存 ${styleSampleCount}/50`}
+                </span>
+              </div>
+              <textarea
+                value={styleSampleText}
+                onChange={(e) => setStyleSampleText(e.target.value)}
+                rows={4}
+                placeholder="每行一条你过去真实发过的动态（建议一次贴20-50条）"
+                className="w-full resize-y rounded-xl border border-[#e7dbd5] bg-[#fffdfa] px-3 py-2 text-xs text-stone-600 placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-[#d8c7bc]"
+              />
+              <div className="mt-2 flex justify-end">
+                <button
+                  onClick={handleSaveStyleSamples}
+                  disabled={isSavingSamples}
+                  className="h-8 px-3 rounded-xl text-[11px] font-semibold text-white shadow-sm transition-all active:scale-[0.97] disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
+                >
+                  {isSavingSamples ? '保存中...' : '覆盖保存到风格库'}
+                </button>
+              </div>
+            </div>
+
             <div className="flex items-center gap-3">
               <button
                 onClick={handleGenerateSocialPosts}
@@ -285,7 +369,7 @@ export default function DiaryDetail() {
             写新日记
           </button>
           <button
-            onClick={handleDelete}
+            onClick={() => setDeleteDialogOpen(true)}
             className="h-11 px-5 rounded-2xl text-sm font-medium bg-white border border-red-100 text-red-400 hover:bg-red-50 transition-all active:scale-[0.98] shadow-sm"
           >
             删除

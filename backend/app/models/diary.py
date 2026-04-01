@@ -130,3 +130,24 @@ class AIAnalysis(Base):
 
     def __repr__(self) -> str:
         return f"<AIAnalysis(id={self.id}, diary_id={self.diary_id})>"
+
+
+class SocialPostSample(Base):
+    """用户历史朋友圈样本（用于Few-shot风格学习）"""
+    __tablename__ = "social_post_samples"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+
+    def __repr__(self) -> str:
+        return f"<SocialPostSample(id={self.id}, user_id={self.user_id})>"

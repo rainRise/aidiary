@@ -40,6 +40,26 @@ class ComprehensiveAnalysisResponse(BaseModel):
     evidence: List[EvidenceItem]
     metadata: Dict
 
+
+class DailyGuidanceResponse(BaseModel):
+    """每日AI引导问题响应"""
+    question: str
+    source: str = Field(description="ai 或 fallback")
+    metadata: Dict
+
+
+class SocialStyleSamplesRequest(BaseModel):
+    """上传/更新社交风格样本"""
+    samples: List[str] = Field(..., min_length=1, max_length=120, description="历史文案样本列表")
+    replace: bool = Field(default=True, description="是否覆盖旧样本")
+
+
+class SocialStyleSamplesResponse(BaseModel):
+    """社交风格样本响应"""
+    total: int
+    samples: List[str]
+    metadata: Dict
+
 class TitleSuggestionRequest(BaseModel):
     """标题生成请求"""
     content: str = Field(..., min_length=10, max_length=10000, description="日记内容")

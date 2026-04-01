@@ -7,6 +7,7 @@ import { toast } from '@/components/ui/toast'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { BookOpen, Sprout, Star } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const EMOTION_FILTERS = ['全部', '开心', '平静', '焦虑', '成就感', '满足', '担忧', '疲惫']
 
@@ -23,18 +24,24 @@ export default function DiaryList() {
   const navigate = useNavigate()
   const { diaries, isLoading, fetchDiaries, pagination, deleteDiary } = useDiaryStore()
   const [selectedEmotion, setSelectedEmotion] = useState<string | undefined>()
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; title: string } | null>(null)
 
   useEffect(() => {
     fetchDiaries({ emotionTag: selectedEmotion })
   }, [fetchDiaries, selectedEmotion])
 
   const handleDelete = async (id: number, title: string) => {
-    if (confirm(`确定要删除日记《${title}》吗？`)) {
-      try {
-        await deleteDiary(id)
-      } catch (error) {
-        toast('删除失败', 'error')
-      }
+    setDeleteTarget({ id, title })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      await deleteDiary(deleteTarget.id)
+    } catch (error) {
+      toast('删除失败', 'error')
+    } finally {
+      setDeleteTarget(null)
     }
   }
 
@@ -54,6 +61,17 @@ export default function DiaryList() {
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(158deg, #f8f5ef 0%, #f2eef5 58%, #f5f2ee 100%)' }}>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="确定删除这篇日记吗？"
+        description={deleteTarget ? <>删除后不可恢复：<span className="font-medium text-stone-700">《{deleteTarget.title || '无标题'}》</span></> : undefined}
+        confirmText="确认删除"
+        cancelText="我再想想"
+        danger
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
+
       {/* 顶部导航 */}
       <header className="sticky top-0 z-50 backdrop-blur-xl border-b border-stone-200/70" style={{ background: 'rgba(248,245,239,0.88)' }}>
         <div className="max-w-3xl mx-auto px-6">

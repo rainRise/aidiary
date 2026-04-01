@@ -5,8 +5,10 @@ import type {
   AnalysisResponse,
   ComprehensiveAnalysisRequest,
   ComprehensiveAnalysisResponse,
+  DailyGuidanceResponse,
   SatirAnalysis,
   SocialPost,
+  SocialStyleSamplesResponse,
 } from '@/types/analysis'
 
 export const aiService = {
@@ -41,6 +43,27 @@ export const aiService = {
   // 用户级综合分析（RAG）
   comprehensiveAnalysis: async (data: ComprehensiveAnalysisRequest): Promise<ComprehensiveAnalysisResponse> => {
     const response = await api.post<ComprehensiveAnalysisResponse>('/api/v1/ai/comprehensive-analysis', data)
+    return response.data
+  },
+
+  // 获取每日个性化引导问题
+  getDailyGuidance: async (): Promise<DailyGuidanceResponse> => {
+    const response = await api.get<DailyGuidanceResponse>('/api/v1/ai/daily-guidance')
+    return response.data
+  },
+
+  // 获取朋友圈风格样本
+  getSocialStyleSamples: async (): Promise<SocialStyleSamplesResponse> => {
+    const response = await api.get<SocialStyleSamplesResponse>('/api/v1/ai/social-style-samples')
+    return response.data
+  },
+
+  // 上传朋友圈风格样本
+  saveSocialStyleSamples: async (samples: string[], replace: boolean = true): Promise<SocialStyleSamplesResponse> => {
+    const response = await api.put<SocialStyleSamplesResponse>('/api/v1/ai/social-style-samples', {
+      samples,
+      replace,
+    })
     return response.data
   },
 

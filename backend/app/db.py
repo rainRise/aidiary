@@ -50,7 +50,7 @@ async def init_db():
     async with engine.begin() as conn:
         # 导入所有模型以确保它们被注册到 Base.metadata
         from app.models.database import User, VerificationCode
-        from app.models.diary import Diary, TimelineEvent, AIAnalysis
+        from app.models.diary import Diary, TimelineEvent, AIAnalysis, SocialPostSample
 
         # 创建所有表
         await conn.run_sync(Base.metadata.create_all)
