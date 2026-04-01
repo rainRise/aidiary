@@ -21,6 +21,11 @@ const ProfileSettings = lazy(() => import('@/pages/settings/ProfileSettings'))
 const PrivacyPolicy = lazy(() => import('@/pages/legal/PrivacyPolicy'))
 const TermsOfService = lazy(() => import('@/pages/legal/TermsOfService'))
 const RefundPolicy = lazy(() => import('@/pages/legal/RefundPolicy'))
+const CommunityPage = lazy(() => import('@/pages/community/CommunityPage'))
+const CreatePostPage = lazy(() => import('@/pages/community/CreatePostPage'))
+const PostDetailPage = lazy(() => import('@/pages/community/PostDetailPage'))
+const CollectionsPage = lazy(() => import('@/pages/community/CollectionsPage'))
+const HistoryPage = lazy(() => import('@/pages/community/HistoryPage'))
 
 // 私有路由组件
 function PrivateRoute({ children }: { children: React.ReactElement }) {
@@ -175,6 +180,48 @@ function App() {
             element={
               <PrivateRoute>
                 <ProfileSettings />
+              </PrivateRoute>
+            }
+          />
+
+          {/* 社区路由 */}
+          <Route
+            path="/community"
+            element={
+              <PrivateRoute>
+                <CommunityPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/community/new"
+            element={
+              <PrivateRoute>
+                <CreatePostPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/community/post/:id"
+            element={
+              <PrivateRoute>
+                <PostDetailPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/community/collections"
+            element={
+              <PrivateRoute>
+                <CollectionsPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/community/history"
+            element={
+              <PrivateRoute>
+                <HistoryPage />
               </PrivateRoute>
             }
           />

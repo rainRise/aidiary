@@ -51,6 +51,7 @@ async def init_db():
         # 导入所有模型以确保它们被注册到 Base.metadata
         from app.models.database import User, VerificationCode
         from app.models.diary import Diary, TimelineEvent, AIAnalysis, SocialPostSample
+        from app.models.community import CommunityPost, PostComment, PostLike, PostCollect, PostView
 
         # 创建所有表
         await conn.run_sync(Base.metadata.create_all)

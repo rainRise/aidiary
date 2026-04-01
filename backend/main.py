@@ -60,10 +60,15 @@ app.include_router(ai.router, prefix="/api/v1", tags=["AI分析"])
 from app.api.v1 import users
 app.include_router(users.router, prefix="/api/v1", tags=["用户"])
 
+# 导入并注册社区路由
+from app.api.v1 import community
+app.include_router(community.router, prefix="/api/v1", tags=["社区"])
+
 # 挂载静态文件目录
 UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(os.path.join(UPLOADS_DIR, "avatars"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "diary_images"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "community_images"), exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 

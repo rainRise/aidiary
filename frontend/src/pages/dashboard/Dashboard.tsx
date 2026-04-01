@@ -105,7 +105,7 @@ export default function Dashboard() {
               />
               <span className="text-stone-700 font-semibold">印记</span>
               <div className="hidden sm:flex items-center gap-0.5 ml-3">
-                {[['/', '首页'], ['/diaries', '日记'], ['/timeline', '时间轴']].map(([path, label]) => (
+                {[['/', '首页'], ['/diaries', '日记'], ['/timeline', '时间轴'], ['/community', '社区']].map(([path, label]) => (
                   <button key={path} onClick={() => navigate(path)}
                     className="px-3 py-1.5 text-sm rounded-xl text-stone-500 hover:text-stone-800 hover:bg-[#f5efea] transition-all">
                     {label}
