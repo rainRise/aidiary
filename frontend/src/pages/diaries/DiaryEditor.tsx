@@ -176,12 +176,20 @@ export default function DiaryEditor() {
       <header className="sticky top-0 z-50 backdrop-blur-xl border-b border-stone-200/70" style={{ background: 'rgba(248,245,239,0.88)' }}>
         <div className="max-w-2xl mx-auto px-6">
           <div className="flex justify-between items-center py-3.5">
-            <button
-              onClick={() => navigate(-1)}
-              className="text-sm text-stone-400 hover:text-stone-600 transition-colors flex items-center gap-1"
-            >
-              ← 返回
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate(-1)}
+                className="text-sm text-stone-400 hover:text-stone-600 transition-colors flex items-center gap-1"
+              >
+                ← 返回
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="text-sm text-[#b56f61] hover:text-[#9c5e52] transition-colors"
+              >
+                回首页
+              </button>
+            </div>
             <span className="text-sm font-semibold text-stone-600 flex items-center gap-1.5"><PenLine className="w-4 h-4 text-[#b56f61]" /> 写日记</span>
             <button
               onClick={handleSubmit}

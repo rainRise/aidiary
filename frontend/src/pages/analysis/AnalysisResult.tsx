@@ -149,12 +149,20 @@ export default function AnalysisResult() {
       <header className="sticky top-0 z-50 backdrop-blur-xl border-b border-rose-100/60" style={{ background: 'rgba(255,248,245,0.88)' }}>
         <div className="max-w-3xl mx-auto px-6">
           <div className="flex justify-between items-center py-3.5">
-            <button
-              onClick={() => navigate(`/diaries/${id}`)}
-              className="text-sm text-stone-400 hover:text-stone-600 transition-colors"
-            >
-              ← 返回日记
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate(`/diaries/${id}`)}
+                className="text-sm text-stone-400 hover:text-stone-600 transition-colors"
+              >
+                ← 返回日记
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="text-sm text-violet-400 hover:text-violet-500 transition-colors"
+              >
+                回首页
+              </button>
+            </div>
             <span className="text-sm font-semibold text-stone-600 flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-violet-400" /> AI 分析</span>
             <div className="w-16" />
           </div>
