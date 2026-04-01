@@ -70,6 +70,32 @@ function MarkdownContent({ markdown }: { markdown: string }) {
   )
 }
 
+function formatServerUtcToLocal(raw: string): string {
+  const text = (raw || '').trim()
+  if (!text) return '-'
+  const normalized = text.includes(' ') ? text.replace(' ', 'T') : text
+  const hasTimezone = /([zZ]|[+\-]\d{2}:\d{2})$/.test(normalized)
+  const parsed = new Date(hasTimezone ? normalized : `${normalized}Z`)
+  if (Number.isNaN(parsed.getTime())) return text
+  return format(parsed, 'yyyy-MM-dd HH:mm')
+}
+
+function fallbackCopyText(text: string): boolean {
+  try {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.left = '-9999px'
+    document.body.appendChild(textarea)
+    textarea.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(textarea)
+    return ok
+  } catch {
+    return false
+  }
+}
+
 export default function DiaryDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -111,6 +137,7 @@ export default function DiaryDetail() {
   const [styleSampleCount, setStyleSampleCount] = useState(0)
   const [isLoadingSamples, setIsLoadingSamples] = useState(false)
   const [isSavingSamples, setIsSavingSamples] = useState(false)
+  const [copiedPostIndex, setCopiedPostIndex] = useState<number | null>(null)
 
   const loadStyleSamples = async () => {
     try {
@@ -142,9 +169,27 @@ export default function DiaryDetail() {
     }
   }
 
-  const copyPost = (content: string) => {
-    navigator.clipboard.writeText(content)
+  const copyPost = async (content: string, index: number) => {
+    let ok = false
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(content)
+        ok = true
+      } else {
+        ok = fallbackCopyText(content)
+      }
+    } catch {
+      ok = fallbackCopyText(content)
+    }
+    if (!ok) {
+      toast('复制失败，请手动选择复制', 'error')
+      return
+    }
+    setCopiedPostIndex(index)
     toast('已复制到剪贴板', 'success')
+    window.setTimeout(() => {
+      setCopiedPostIndex((prev) => (prev === index ? null : prev))
+    }, 1400)
   }
 
   const handleSaveStyleSamples = async () => {
@@ -273,9 +318,9 @@ export default function DiaryDetail() {
 
           {/* 时间信息 */}
           <div className="text-xs text-stone-300 pt-2 border-t border-[#efe6e0] space-y-1">
-            <p>创建于 {format(new Date(currentDiary.created_at), 'yyyy-MM-dd HH:mm')}</p>
+            <p>创建于 {formatServerUtcToLocal(currentDiary.created_at)}</p>
             {currentDiary.updated_at !== currentDiary.created_at && (
-              <p>更新于 {format(new Date(currentDiary.updated_at), 'yyyy-MM-dd HH:mm')}</p>
+              <p>更新于 {formatServerUtcToLocal(currentDiary.updated_at)}</p>
             )}
           </div>
         </div>
@@ -349,7 +394,12 @@ export default function DiaryDetail() {
                         <span className="text-xs px-2 py-0.5 rounded-full bg-[#f5efea] text-[#b56f61]">{post.version}</span>
                         <span className="text-xs px-2 py-0.5 rounded-full bg-violet-50 text-violet-400">{post.style}</span>
                       </div>
-                      <button onClick={() => copyPost(post.content)} className="text-xs text-[#b56f61] hover:text-[#a45f52]">复制</button>
+                      <button
+                        onClick={() => void copyPost(post.content, idx)}
+                        className={`text-xs transition-colors ${copiedPostIndex === idx ? 'text-emerald-500' : 'text-[#b56f61] hover:text-[#a45f52]'}`}
+                      >
+                        {copiedPostIndex === idx ? '已复制' : '复制'}
+                      </button>
                     </div>
                     <p className="text-sm text-stone-600 leading-6">{post.content}</p>
                   </div>

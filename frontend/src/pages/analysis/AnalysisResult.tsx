@@ -22,6 +22,7 @@ export default function AnalysisResult() {
   const [isLoading, setIsLoading] = useState(true)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [copiedPostIndex, setCopiedPostIndex] = useState<number | null>(null)
 
   useEffect(() => {
     if (id) {
@@ -76,9 +77,43 @@ export default function AnalysisResult() {
     }
   }
 
-  const copyPost = (content: string) => {
-    navigator.clipboard.writeText(content)
+  const fallbackCopyText = (text: string): boolean => {
+    try {
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      document.body.appendChild(textarea)
+      textarea.select()
+      const ok = document.execCommand('copy')
+      document.body.removeChild(textarea)
+      return ok
+    } catch {
+      return false
+    }
+  }
+
+  const copyPost = async (content: string, index: number) => {
+    let ok = false
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(content)
+        ok = true
+      } else {
+        ok = fallbackCopyText(content)
+      }
+    } catch {
+      ok = fallbackCopyText(content)
+    }
+    if (!ok) {
+      toast('复制失败，请手动选择复制', 'error')
+      return
+    }
+    setCopiedPostIndex(index)
     toast('已复制到剪贴板', 'success')
+    window.setTimeout(() => {
+      setCopiedPostIndex((prev) => (prev === index ? null : prev))
+    }, 1400)
   }
 
   const emotionTags = diary?.emotion_tags ?? []
@@ -315,10 +350,10 @@ export default function AnalysisResult() {
                           <span className="text-xs px-2 py-0.5 rounded-full bg-violet-50 text-violet-400">{post.style}</span>
                         </div>
                         <button
-                          onClick={() => copyPost(post.content)}
-                          className="text-xs text-rose-400 hover:text-rose-500 transition-colors"
+                          onClick={() => void copyPost(post.content, index)}
+                          className={`text-xs transition-colors ${copiedPostIndex === index ? 'text-emerald-500' : 'text-rose-400 hover:text-rose-500'}`}
                         >
-                          复制
+                          {copiedPostIndex === index ? '已复制' : '复制'}
                         </button>
                       </div>
                       <p className="text-sm text-stone-500 leading-6">{post.content}</p>
