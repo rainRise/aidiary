@@ -48,7 +48,7 @@ export default function DiaryEditor() {
   const [diaryDate, setDiaryDate] = useState(new Date().toISOString().split('T')[0])
   const [emotionTags, setEmotionTags] = useState<string[]>([])
   const [importanceScore, setImportanceScore] = useState(5)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isAnalyzing] = useState(false)
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false)
   const [isInitializing, setIsInitializing] = useState(false)
   const [guidedQuestion, setGuidedQuestion] = useState(GUIDED_QUESTIONS[new Date().getDate() % GUIDED_QUESTIONS.length])
@@ -133,16 +133,8 @@ export default function DiaryEditor() {
           importance_score: importanceScore,
         })
         toast('日记保存成功', 'success')
-        // 后台自动触发AI分析
-        setIsAnalyzing(true)
-        aiService.analyze({ diary_id: diary.id })
-          .then(() => {
-            toast('AI 分析已完成', 'success')
-          })
-          .catch(() => {
-            // 静默失败，用户可以手动触发
-          })
-          .finally(() => setIsAnalyzing(false))
+        // 不再自动触发综合分析（萨提亚）
+        // 时间轴事件由后端自动生成 + 异步精炼
         navigate(`/diaries/${diary.id}`)
       }
     } catch (error: any) {

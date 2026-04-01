@@ -72,18 +72,23 @@ def detect_peaks_and_valleys(
 
     peaks = []
     valleys = []
-    values = [p.get(value_key, 5) for p in points]
+    # 允许空值（无数据日），后续比较时跳过
+    values = [p.get(value_key) for p in points]
     n = len(values)
 
     # 检测峰值（局部极大值）
     for i in range(n):
         v = values[i]
+        if v is None:
+            continue
         if v < peak_threshold:
             continue
         is_peak = True
-        if i > 0 and values[i - 1] >= v:
+        left = values[i - 1] if i > 0 else None
+        right = values[i + 1] if i < n - 1 else None
+        if left is not None and left >= v:
             is_peak = False
-        if i < n - 1 and values[i + 1] > v:
+        if right is not None and right > v:
             is_peak = False
         if is_peak:
             peaks.append({
@@ -96,14 +101,15 @@ def detect_peaks_and_valleys(
     # 检测谷值（连续低值区域）
     i = 0
     while i < n:
-        if values[i] <= valley_threshold:
+        if values[i] is not None and values[i] <= valley_threshold:
             start = i
-            while i < n and values[i] <= valley_threshold:
+            while i < n and values[i] is not None and values[i] <= valley_threshold:
                 i += 1
             end = i - 1
             # 至少有 1 天
             valley_points = points[start:end + 1]
-            min_val = min(values[start:end + 1])
+            segment_values = [x for x in values[start:end + 1] if x is not None]
+            min_val = min(segment_values) if segment_values else valley_threshold
             valleys.append({
                 "date_range": [points[start]["date"], points[end]["date"]],
                 "min_value": min_val,
