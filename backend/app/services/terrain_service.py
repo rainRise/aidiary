@@ -299,6 +299,10 @@ class TerrainService:
                         "emotion_tag": ev.emotion_tag,
                         "importance_score": ev.importance_score,
                         "event_type": ev.event_type,
+                        "source_label": (
+                            (ev.related_entities or {}).get("source_label")
+                            or ("AI提炼事件" if ev.diary_id else "系统记录")
+                        ),
                     }
                     for ev in day_events
                 ]
@@ -322,6 +326,7 @@ class TerrainService:
                         "emotion_tag": d.emotion_tags[0] if d.emotion_tags else None,
                         "importance_score": d.importance_score,
                         "event_type": None,
+                        "source_label": "日记自动摘要",
                     }
                     for d in day_diaries
                 ]

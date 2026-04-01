@@ -69,6 +69,7 @@ export interface TerrainEvent {
   emotion_tag: string | null
   importance_score: number
   event_type: EventType | null
+  source_label?: string
 }
 
 export interface TerrainPoint {

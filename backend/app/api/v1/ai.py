@@ -554,13 +554,19 @@ async def analyze_diary(
                 existing_event = existing_event_result.scalar_one_or_none()
 
                 if existing_event:
+                    related_entities = timeline_event.get("related_entities") or {}
+                    related_entities["source"] = "ai_analysis"
+                    related_entities["source_label"] = "AI提炼事件"
                     existing_event.event_date = target_diary.diary_date
                     existing_event.event_summary = summary
                     existing_event.emotion_tag = timeline_event.get("emotion_tag")
                     existing_event.importance_score = int(timeline_event.get("importance_score") or 5)
                     existing_event.event_type = timeline_event.get("event_type")
-                    existing_event.related_entities = timeline_event.get("related_entities") or {}
+                    existing_event.related_entities = related_entities
                 else:
+                    related_entities = timeline_event.get("related_entities") or {}
+                    related_entities["source"] = "ai_analysis"
+                    related_entities["source_label"] = "AI提炼事件"
                     event_data = TimelineEventCreate(
                         diary_id=target_diary.id,
                         event_date=target_diary.diary_date,
@@ -568,7 +574,7 @@ async def analyze_diary(
                         emotion_tag=timeline_event.get("emotion_tag"),
                         importance_score=int(timeline_event.get("importance_score") or 5),
                         event_type=timeline_event.get("event_type"),
-                        related_entities=timeline_event.get("related_entities") or {},
+                        related_entities=related_entities,
                     )
                     await timeline_service.create_event(db, current_user.id, event_data)
 

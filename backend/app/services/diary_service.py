@@ -1,13 +1,32 @@
 """
 日记业务逻辑服务
 """
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict
 from datetime import date, datetime
 from sqlalchemy import select, func, desc, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.diary import Diary, TimelineEvent
 from app.schemas.diary import DiaryCreate, DiaryUpdate, TimelineEventCreate
+
+
+EVENT_TYPE_KEYWORDS: Dict[str, List[str]] = {
+    "work": ["工作", "项目", "开发", "上线", "代码", "会议", "复盘", "学习", "创业", "任务"],
+    "relationship": ["朋友", "家人", "同事", "导师", "沟通", "聊天", "关系", "争执", "支持"],
+    "health": ["运动", "睡眠", "失眠", "身体", "生病", "健康", "饮食", "跑步", "疲惫", "嗓子"],
+    "achievement": ["完成", "达成", "突破", "进步", "成功", "成果", "通过", "获奖", "签约"],
+}
+
+
+def _infer_event_type(text: str) -> str:
+    for event_type, keywords in EVENT_TYPE_KEYWORDS.items():
+        if any(k in text for k in keywords):
+            return event_type
+    return "other"
+
+
+def _safe_text(text: Optional[str]) -> str:
+    return (text or "").strip()
 
 
 class DiaryService:
@@ -275,6 +294,108 @@ class TimelineService:
         await db.refresh(event)
 
         return event
+
+    def _build_event_payload_from_diary(self, diary: Diary) -> Dict:
+        title = _safe_text(diary.title)
+        content = _safe_text(diary.content)
+        emotion_tag = (diary.emotion_tags or [None])[0]
+        text_for_type = f"{title} {content[:120]}"
+
+        if title and content:
+            summary = f"{title}：{content[:56]}{'...' if len(content) > 56 else ''}"
+        elif title:
+            summary = title
+        else:
+            summary = f"{content[:72]}{'...' if len(content) > 72 else ''}" if content else "日记记录"
+
+        return {
+            "event_date": diary.diary_date,
+            "event_summary": summary,
+            "emotion_tag": emotion_tag,
+            "importance_score": int(diary.importance_score or 5),
+            "event_type": _infer_event_type(text_for_type),
+            "related_entities": {
+                "source": "diary_auto",
+                "source_label": "日记自动摘要",
+                "word_count": int(diary.word_count or 0),
+            },
+        }
+
+    async def upsert_event_from_diary(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        diary: Diary
+    ) -> TimelineEvent:
+        """
+        根据日记自动创建/更新时间轴事件（幂等，按 diary_id 唯一）。
+        """
+        payload = self._build_event_payload_from_diary(diary)
+        existing_result = await db.execute(
+            select(TimelineEvent).where(
+                and_(
+                    TimelineEvent.user_id == user_id,
+                    TimelineEvent.diary_id == diary.id
+                )
+            ).limit(1)
+        )
+        existing = existing_result.scalar_one_or_none()
+
+        if existing:
+            existing.event_date = payload["event_date"]
+            existing.event_summary = payload["event_summary"]
+            existing.emotion_tag = payload["emotion_tag"]
+            existing.importance_score = payload["importance_score"]
+            existing.event_type = payload["event_type"]
+            existing.related_entities = payload["related_entities"]
+            await db.commit()
+            await db.refresh(existing)
+            return existing
+
+        event_data = TimelineEventCreate(
+            diary_id=diary.id,
+            event_date=payload["event_date"],
+            event_summary=payload["event_summary"],
+            emotion_tag=payload["emotion_tag"],
+            importance_score=payload["importance_score"],
+            event_type=payload["event_type"],
+            related_entities=payload["related_entities"],
+        )
+        return await self.create_event(db, user_id, event_data)
+
+    async def rebuild_events_for_user(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        limit: int = 500
+    ) -> Dict:
+        """
+        基于用户已有日记重建时间轴事件（不会跨用户，不会重复创建）。
+        """
+        conditions = [Diary.user_id == user_id]
+        if start_date:
+            conditions.append(Diary.diary_date >= start_date)
+        if end_date:
+            conditions.append(Diary.diary_date <= end_date)
+
+        diaries_result = await db.execute(
+            select(Diary).where(and_(*conditions)).order_by(desc(Diary.diary_date), desc(Diary.created_at)).limit(limit)
+        )
+        diaries = list(diaries_result.scalars().all())
+
+        created_or_updated = 0
+        for d in diaries:
+            await self.upsert_event_from_diary(db, user_id, d)
+            created_or_updated += 1
+
+        return {
+            "processed_diaries": len(diaries),
+            "created_or_updated": created_or_updated,
+            "start_date": str(start_date) if start_date else None,
+            "end_date": str(end_date) if end_date else None,
+        }
 
     async def get_timeline(
         self,

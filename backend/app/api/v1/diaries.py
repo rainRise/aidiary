@@ -4,7 +4,7 @@
 import os
 import uuid
 from typing import Optional
-from datetime import date
+from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,6 +44,11 @@ async def create_diary(
     - **images**: 图片URL列表
     """
     diary = await diary_service.create_diary(db, current_user.id, diary_data)
+    try:
+        await timeline_service.upsert_event_from_diary(db, current_user.id, diary)
+    except Exception as e:
+        # 不阻断主流程，避免因为时间轴失败导致日记无法保存
+        print(f"[Timeline Auto Upsert] create_diary warning: {e}")
     return DiaryResponse.model_validate(diary)
 
 
@@ -127,6 +132,11 @@ async def update_diary(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="日记不存在"
         )
+
+    try:
+        await timeline_service.upsert_event_from_diary(db, current_user.id, diary)
+    except Exception as e:
+        print(f"[Timeline Auto Upsert] update_diary warning: {e}")
 
     return DiaryResponse.model_validate(diary)
 
@@ -269,6 +279,31 @@ async def get_timeline_by_date(
     )
 
     return [TimelineEventResponse.model_validate(e) for e in events]
+
+
+@router.post("/timeline/rebuild", summary="重建我的时间轴事件")
+async def rebuild_my_timeline(
+    days: int = Query(180, ge=7, le=3650, description="回溯天数"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    根据用户历史日记重建时间轴事件（幂等）。
+    """
+    end = date.today()
+    start = end - timedelta(days=days - 1)
+    stats = await timeline_service.rebuild_events_for_user(
+        db,
+        user_id=current_user.id,
+        start_date=start,
+        end_date=end,
+        limit=max(days * 3, 500),
+    )
+    return {
+        "success": True,
+        "message": "时间轴重建完成",
+        "stats": stats,
+    }
 
 
 # ==================== 情绪地形图 ====================

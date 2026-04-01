@@ -351,6 +351,14 @@ export default function Timeline() {
                                   <span>{getEventTypeLabel(event.event_type)}</span>
                                   <span>·</span>
                                   <span>重要性 {event.importance_score}/10</span>
+                                  {event.source_label ? (
+                                    <>
+                                      <span>·</span>
+                                      <span className="px-1.5 py-0.5 rounded-md bg-[#f3eef9] text-[#7f6d96]">
+                                        {event.source_label}
+                                      </span>
+                                    </>
+                                  ) : null}
                                 </div>
                               </div>
                               <Button
