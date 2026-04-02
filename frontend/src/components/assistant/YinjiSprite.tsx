@@ -37,7 +37,7 @@ export default function YinjiSprite() {
   const [panelDragging, setPanelDragging] = useState(false)
   const [panelPosition, setPanelPosition] = useState<Pos | null>(null)
 
-  const dragRef = useRef({ offsetX: 0, offsetY: 0 })
+  const dragRef = useRef({ offsetX: 0, offsetY: 0, started: false })
   const panelDragRef = useRef({ offsetX: 0, offsetY: 0 })
   const panelRef = useRef<HTMLDivElement>(null)
 
