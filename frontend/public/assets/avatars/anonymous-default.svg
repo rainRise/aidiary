@@ -1,0 +1,27 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="32" y1="24" x2="222" y2="236" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F2DFD6"/>
+      <stop offset="0.52" stop-color="#DCCFE8"/>
+      <stop offset="1" stop-color="#BFD0E7"/>
+    </linearGradient>
+    <radialGradient id="softLight" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(72 54) rotate(42.6) scale(152.8)">
+      <stop stop-color="white" stop-opacity="0.82"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="10" y="10" width="236" height="236" rx="118" fill="url(#bg)"/>
+  <rect x="10" y="10" width="236" height="236" rx="118" fill="url(#softLight)"/>
+  <rect x="10.5" y="10.5" width="235" height="235" rx="117.5" stroke="white" stroke-opacity="0.76"/>
+
+  <path d="M90 106.5C90 85.24 107.24 68 128.5 68C149.76 68 167 85.24 167 106.5C167 127.76 149.76 145 128.5 145C107.24 145 90 127.76 90 106.5Z" fill="#F9F7F4" fill-opacity="0.94"/>
+  <path d="M66 196C66 167.83 88.83 145 117 145H140C168.17 145 191 167.83 191 196V199H66V196Z" fill="#F9F7F4" fill-opacity="0.94"/>
+
+  <path d="M101 95C106.8 90.2 114.3 87.5 122.3 87.5" stroke="#7B6E8F" stroke-opacity="0.62" stroke-width="5.5" stroke-linecap="round"/>
+  <path d="M134.7 87.5C142.7 87.5 150.2 90.2 156 95" stroke="#7B6E8F" stroke-opacity="0.62" stroke-width="5.5" stroke-linecap="round"/>
+  <path d="M99 170C105 166 112.2 163.7 119.9 163.7" stroke="#7B6E8F" stroke-opacity="0.48" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M137.8 163.7C145.5 163.7 152.7 166 158.7 170" stroke="#7B6E8F" stroke-opacity="0.48" stroke-width="4.5" stroke-linecap="round"/>
+
+  <circle cx="194" cy="69" r="14" fill="#E28E7C" fill-opacity="0.78"/>
+</svg>

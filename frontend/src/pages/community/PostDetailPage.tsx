@@ -5,6 +5,7 @@ import { communityService, type Post, type Comment } from '@/services/community.
 import { toast } from '@/components/ui/toast'
 import { Heart, MessageCircle, Bookmark, ArrowLeft, Send, EyeOff, Trash2 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import AnonymousAvatar from '@/components/community/AnonymousAvatar'
 
 const CIRCLE_ICONS: Record<string, string> = {
   anxiety: '😰', sadness: '😔', growth: '🌱', peace: '☀️', confusion: '🤔',
@@ -162,9 +163,7 @@ export default function PostDetailPage() {
           <div className="flex items-center gap-2.5 mb-4">
             {post.is_anonymous ? (
               <>
-                <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center">
-                  <EyeOff className="w-4 h-4 text-stone-400" />
-                </div>
+                <AnonymousAvatar size="lg" />
                 <div>
                   <p className="text-sm font-medium text-stone-500">匿名用户</p>
                   <p className="text-[10px] text-stone-300">{timeAgo(post.created_at)}</p>
@@ -240,9 +239,7 @@ export default function PostDetailPage() {
                   <div className="flex items-center gap-2 mb-2">
                     {comment.is_anonymous ? (
                       <>
-                        <div className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center">
-                          <EyeOff className="w-3 h-3 text-stone-400" />
-                        </div>
+                        <AnonymousAvatar size="sm" />
                         <span className="text-xs text-stone-400">匿名用户</span>
                       </>
                     ) : (

@@ -105,7 +105,7 @@ export default function Dashboard() {
               />
               <span className="text-stone-700 font-semibold">印记</span>
               <div className="hidden sm:flex items-center gap-0.5 ml-3">
-                {[['/', '首页'], ['/diaries', '日记'], ['/timeline', '时间轴'], ['/community', '社区']].map(([path, label]) => (
+                {[['/', '首页'], ['/diaries', '日记'], ['/timeline', '情绪地形图'], ['/community', '社区']].map(([path, label]) => (
                   <button key={path} onClick={() => navigate(path)}
                     className="px-3 py-1.5 text-sm rounded-xl text-stone-500 hover:text-stone-800 hover:bg-[#f5efea] transition-all">
                     {label}
@@ -236,7 +236,7 @@ export default function Dashboard() {
           {[
             { icon: <PenLine className="w-6 h-6 text-[#b56f61]" />, title: '写日记', desc: '记录今天', bg: 'hover:bg-[#f5efea] hover:border-[#d8c7bc]', action: () => navigate('/diaries/new') },
             { icon: <BookOpen className="w-6 h-6 text-violet-400" />, title: '日记本', desc: '浏览记录', bg: 'hover:bg-violet-50 hover:border-violet-200', action: () => navigate('/diaries') },
-            { icon: <Clock className="w-6 h-6 text-emerald-400" />, title: '时间轴', desc: '回顾历程', bg: 'hover:bg-emerald-50 hover:border-emerald-200', action: () => navigate('/timeline') },
+            { icon: <Clock className="w-6 h-6 text-emerald-400" />, title: '情绪地形图', desc: '查看情绪轨迹', bg: 'hover:bg-emerald-50 hover:border-emerald-200', action: () => navigate('/timeline') },
             { icon: <Sparkles className="w-6 h-6 text-amber-400" />, title: '综合分析', desc: '长期洞察', bg: 'hover:bg-amber-50 hover:border-amber-200', action: () => navigate('/analysis') },
           ].map((item) => (
             <button
@@ -320,5 +320,4 @@ export default function Dashboard() {
     </div>
   )
 }
-
 

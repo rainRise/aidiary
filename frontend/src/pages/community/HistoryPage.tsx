@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { communityService, type ViewHistoryItem } from '@/services/community.service'
 import { toast } from '@/components/ui/toast'
-import { ArrowLeft, Heart, MessageCircle, Clock, EyeOff } from 'lucide-react'
+import { ArrowLeft, Heart, MessageCircle, Clock } from 'lucide-react'
+import AnonymousAvatar from '@/components/community/AnonymousAvatar'
 
 const CIRCLE_ICONS: Record<string, string> = {
   anxiety: '😰', sadness: '😔', growth: '🌱', peace: '☀️', confusion: '🤔',
@@ -75,9 +76,7 @@ export default function HistoryPage() {
                   <div className="flex items-center gap-2 mb-3">
                     {post.is_anonymous ? (
                       <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center">
-                          <EyeOff className="w-3 h-3 text-stone-400" />
-                        </div>
+                        <AnonymousAvatar size="sm" />
                         <span className="text-xs text-stone-400">匿名用户</span>
                       </div>
                     ) : (
