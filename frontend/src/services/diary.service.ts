@@ -82,7 +82,7 @@ export const diaryService = {
     return response.data
   },
 
-  // 获取情绪地形图数据
+  // 获取成长中心数据（能量/情绪/事件密度）
   getTerrainData: async (days: number = 30): Promise<TerrainResponse> => {
     const response = await api.get<TerrainResponse>('/api/v1/diaries/timeline/terrain', {
       params: { days },

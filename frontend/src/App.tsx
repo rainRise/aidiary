@@ -16,7 +16,7 @@ const DiaryList = lazy(() => import('@/pages/diaries/DiaryList'))
 const DiaryDetail = lazy(() => import('@/pages/diaries/DiaryDetail'))
 const DiaryEditor = lazy(() => import('@/pages/diaries/DiaryEditor'))
 const Dashboard = lazy(() => import('@/pages/dashboard/Dashboard'))
-const Timeline = lazy(() => import('@/pages/timeline/Timeline'))
+const GrowthCenter = lazy(() => import('@/pages/timeline/Timeline'))
 const AnalysisOverview = lazy(() => import('@/pages/analysis/AnalysisOverview'))
 const ProfileSettings = lazy(() => import('@/pages/settings/ProfileSettings'))
 const PrivacyPolicy = lazy(() => import('@/pages/legal/PrivacyPolicy'))
@@ -157,13 +157,14 @@ function App() {
             }
           />
           <Route
-            path="/timeline"
+            path="/growth"
             element={
               <PrivateRoute>
-                <Timeline />
+                <GrowthCenter />
               </PrivateRoute>
             }
           />
+          <Route path="/timeline" element={<Navigate to="/growth" replace />} />
           <Route
             path="/analysis"
             element={

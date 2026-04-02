@@ -12,7 +12,8 @@ export const routes = {
   diaryEdit: (id: number) => `/diaries/${id}/edit`,
   analysis: '/analysis',
   analysisResult: (id: number) => `/analysis/${id}`,
-  timeline: '/timeline',
+  growth: '/growth',
+  timeline: '/growth',
   dashboard: '/dashboard',
   settings: '/settings',
 } as const
