@@ -243,7 +243,7 @@ export default function YinjiSprite() {
           setShowMenu((v) => !v)
         }}
         onClick={() => !dragging && !muted && setOpen((v) => !v)}
-        className={`fixed z-[90] select-none ${muted ? 'w-12 h-12' : 'w-[72px] h-[72px]'} rounded-full shadow-lg border border-white/70 bg-white/80 backdrop-blur-md overflow-hidden transition-all duration-200 ${dragging ? 'scale-95' : 'hover:scale-[1.03]'}`}
+        className={`fixed z-[9999] select-none ${muted ? 'w-12 h-12' : 'w-[72px] h-[72px]'} rounded-full shadow-lg border border-white/70 bg-white/80 backdrop-blur-md overflow-hidden transition-all duration-200 ${dragging ? 'scale-95' : 'hover:scale-[1.03]'}`}
         style={{ left: position.x, top: position.y }}
       >
         {muted ? (
@@ -268,7 +268,7 @@ export default function YinjiSprite() {
 
       {showMenu && (
         <div
-          className="fixed z-[95] w-36 rounded-xl border border-stone-200 bg-white shadow-lg p-1.5"
+          className="fixed z-[10000] w-36 rounded-xl border border-stone-200 bg-white shadow-lg p-1.5"
           style={{ left: position.x - 70, top: position.y - 56 }}
         >
           {!muted ? (
@@ -286,7 +286,7 @@ export default function YinjiSprite() {
       {open && !muted && (
         <div
           ref={panelRef}
-          className="fixed z-[88] w-[360px] h-[510px] rounded-3xl border border-[#e9ddd5] bg-[linear-gradient(160deg,#fffdfa_0%,#fbf6f2_40%,#f7f2f8_100%)] shadow-[0_22px_50px_rgba(136,116,121,0.28)] overflow-hidden"
+          className="fixed z-[9998] w-[360px] h-[510px] rounded-3xl border border-[#e9ddd5] bg-[linear-gradient(160deg,#fffdfa_0%,#fbf6f2_40%,#f7f2f8_100%)] shadow-[0_22px_50px_rgba(136,116,121,0.28)] overflow-hidden"
           style={panelStyle}
         >
           <div className="h-12 px-4 border-b border-[#ede2dc] flex items-center justify-between bg-white/65">
@@ -396,4 +396,3 @@ export default function YinjiSprite() {
     </>
   )
 }
-
