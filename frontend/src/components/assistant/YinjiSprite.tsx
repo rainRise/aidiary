@@ -34,8 +34,11 @@ export default function YinjiSprite() {
   const [messages, setMessages] = useState<AssistantMessage[]>([])
   const [input, setInput] = useState('')
   const [responding, setResponding] = useState(false)
+  const [panelDragging, setPanelDragging] = useState(false)
+  const [panelPosition, setPanelPosition] = useState<Pos | null>(null)
 
   const dragRef = useRef({ offsetX: 0, offsetY: 0 })
+  const panelDragRef = useRef({ offsetX: 0, offsetY: 0 })
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -89,6 +92,15 @@ export default function YinjiSprite() {
         x: clamp(p.x, 0, window.innerWidth - 72),
         y: clamp(p.y, 0, window.innerHeight - 72),
       }))
+      setPanelPosition((p) => {
+        if (!p) return p
+        const width = 360
+        const height = 510
+        return {
+          x: clamp(p.x, 10, window.innerWidth - width - 10),
+          y: clamp(p.y, 10, window.innerHeight - height - 10),
+        }
+      })
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
@@ -97,10 +109,16 @@ export default function YinjiSprite() {
   const panelStyle = useMemo(() => {
     const width = 360
     const height = 510
-    const left = position.x + 72 > window.innerWidth - width - 12 ? position.x - width - 12 : position.x + 70
-    const top = position.y > window.innerHeight - height - 20 ? window.innerHeight - height - 20 : position.y - 20
+    if (panelPosition) {
+      return {
+        left: clamp(panelPosition.x, 10, window.innerWidth - width - 10),
+        top: clamp(panelPosition.y, 10, window.innerHeight - height - 10),
+      }
+    }
+    const left = position.x + 88 > window.innerWidth - width - 12 ? position.x - width - 12 : position.x + 82
+    const top = position.y > window.innerHeight - height - 20 ? window.innerHeight - height - 20 : position.y - 18
     return { left: clamp(left, 10, window.innerWidth - width - 10), top: clamp(top, 10, window.innerHeight - height - 10) }
-  }, [position.x, position.y])
+  }, [position.x, position.y, panelPosition])
 
   const beginDrag = (e: React.PointerEvent<HTMLButtonElement>) => {
     setShowMenu(false)
@@ -120,6 +138,28 @@ export default function YinjiSprite() {
   const endDrag = () => {
     setDragging(false)
     localStorage.setItem(STORAGE_POS, JSON.stringify(position))
+  }
+
+  const beginPanelDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button')) return
+    setPanelDragging(true)
+    const rect = panelRef.current?.getBoundingClientRect()
+    if (!rect) return
+    panelDragRef.current = { offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top }
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  }
+
+  const onPanelDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!panelDragging) return
+    const width = 360
+    const height = 510
+    const x = clamp(e.clientX - panelDragRef.current.offsetX, 10, window.innerWidth - width - 10)
+    const y = clamp(e.clientY - panelDragRef.current.offsetY, 10, window.innerHeight - height - 10)
+    setPanelPosition({ x, y })
+  }
+
+  const endPanelDrag = () => {
+    setPanelDragging(false)
   }
 
   const toggleMuted = async (value: boolean) => {
@@ -171,6 +211,27 @@ export default function YinjiSprite() {
       toast('已清空当前对话', 'success')
     } catch {
       toast('清空失败', 'error')
+    }
+  }
+
+  const deleteSession = async (sid: number) => {
+    try {
+      await assistantService.archiveSession(sid)
+      const remaining = sessions.filter((s) => s.id !== sid)
+      setSessions(remaining)
+      if (sid === sessionId) {
+        const next = remaining[0]?.id ?? null
+        setSessionId(next)
+        if (next) {
+          const msgs = await assistantService.listMessages(next)
+          setMessages(msgs)
+        } else {
+          setMessages([])
+        }
+      }
+      toast('已删除该对话', 'success')
+    } catch {
+      toast('删除对话失败', 'error')
     }
   }
 
@@ -242,8 +303,19 @@ export default function YinjiSprite() {
           e.preventDefault()
           setShowMenu((v) => !v)
         }}
-        onClick={() => !dragging && !muted && setOpen((v) => !v)}
-        className={`fixed z-[9999] select-none ${muted ? 'w-12 h-12' : 'w-[72px] h-[72px]'} rounded-full shadow-lg border border-white/70 bg-white/80 backdrop-blur-md overflow-hidden transition-all duration-200 ${dragging ? 'scale-95' : 'hover:scale-[1.03]'}`}
+        onClick={() => {
+          if (dragging) return
+          if (muted) {
+            toggleMuted(false)
+            return
+          }
+          setOpen((v) => !v)
+        }}
+        className={`fixed z-[9999] select-none overflow-hidden transition-all duration-200 ${dragging ? 'scale-95' : 'hover:scale-[1.03]'} ${
+          muted
+            ? 'w-12 h-12 rounded-full shadow-lg border border-white/70 bg-white/90 backdrop-blur-md'
+            : 'w-[88px] h-[88px] bg-transparent border-none shadow-none rounded-none'
+        }`}
         style={{ left: position.x, top: position.y }}
       >
         {muted ? (
@@ -255,14 +327,18 @@ export default function YinjiSprite() {
             loop
             muted
             playsInline
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain drop-shadow-[0_8px_18px_rgba(95,84,128,0.32)]"
             onError={(e) => {
               const v = e.currentTarget
               if (v.src.endsWith('.webm')) v.src = '/Video 1.mp4'
             }}
           />
         ) : (
-          <img src="/Image 1.png" alt="映记精灵" className="w-full h-full object-contain bg-transparent" />
+          <img
+            src="/Image 1.png"
+            alt="映记精灵"
+            className="w-full h-full object-contain bg-transparent drop-shadow-[0_8px_18px_rgba(95,84,128,0.28)]"
+          />
         )}
       </button>
 
@@ -287,9 +363,14 @@ export default function YinjiSprite() {
         <div
           ref={panelRef}
           className="fixed z-[9998] w-[360px] h-[510px] rounded-3xl border border-[#e9ddd5] bg-[linear-gradient(160deg,#fffdfa_0%,#fbf6f2_40%,#f7f2f8_100%)] shadow-[0_22px_50px_rgba(136,116,121,0.28)] overflow-hidden"
-          style={panelStyle}
+          style={{ left: panelStyle.left, top: panelStyle.top }}
         >
-          <div className="h-12 px-4 border-b border-[#ede2dc] flex items-center justify-between bg-white/65">
+          <div
+            className={`h-12 px-4 border-b border-[#ede2dc] flex items-center justify-between bg-white/65 ${panelDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            onPointerDown={beginPanelDrag}
+            onPointerMove={onPanelDrag}
+            onPointerUp={endPanelDrag}
+          >
             <div className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4 text-[#b36d61]" />
               <p className="text-sm font-semibold text-stone-700">映记精灵</p>
@@ -334,14 +415,27 @@ export default function YinjiSprite() {
             </div>
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
               {sessions.slice(0, 8).map((s) => (
-                <button
+                <div
                   key={s.id}
-                  onClick={() => openSession(s.id)}
-                  className={`shrink-0 px-2 py-1 rounded-lg text-[11px] border ${s.id === sessionId ? 'text-white border-transparent' : 'text-stone-600 border-stone-200 bg-white/70'}`}
+                  className={`shrink-0 inline-flex items-center gap-1 pl-2 pr-1 py-1 rounded-lg text-[11px] border ${
+                    s.id === sessionId ? 'text-white border-transparent' : 'text-stone-600 border-stone-200 bg-white/70'
+                  }`}
                   style={s.id === sessionId ? { background: 'linear-gradient(135deg,#de8f7b,#a29cb9)' } : undefined}
                 >
-                  {s.title || '新对话'}
-                </button>
+                  <button onClick={() => openSession(s.id)} className="truncate max-w-[72px]">
+                    {s.title || '新对话'}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      deleteSession(s.id)
+                    }}
+                    className={`rounded-md p-0.5 ${s.id === sessionId ? 'hover:bg-white/20' : 'hover:bg-stone-100'}`}
+                    title="删除对话"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
               ))}
             </div>
           </div>
