@@ -1,4 +1,5 @@
 // 认证状态管理
+// Token 通过 httpOnly cookie 管理，前端不直接接触 token
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User } from '@/types/auth'
@@ -6,7 +7,6 @@ import { authService } from '@/services/auth.service'
 
 interface AuthState {
   user: User | null
-  token: string | null
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
@@ -24,7 +24,6 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      token: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -35,11 +34,9 @@ export const useAuthStore = create<AuthState>()(
           const response = await authService.login({ email, code })
           set({
             user: response.user,
-            token: response.access_token,
             isAuthenticated: true,
             isLoading: false,
           })
-          localStorage.setItem('access_token', response.access_token)
         } catch (error: any) {
           set({
             error: error.response?.data?.detail || '登录失败',
@@ -55,11 +52,9 @@ export const useAuthStore = create<AuthState>()(
           const response = await authService.loginWithPassword(email, password)
           set({
             user: response.user,
-            token: response.access_token,
             isAuthenticated: true,
             isLoading: false,
           })
-          localStorage.setItem('access_token', response.access_token)
         } catch (error: any) {
           set({
             error: error.response?.data?.detail || '登录失败',
@@ -97,37 +92,26 @@ export const useAuthStore = create<AuthState>()(
         } finally {
           set({
             user: null,
-            token: null,
             isAuthenticated: false,
           })
-          localStorage.removeItem('access_token')
         }
       },
 
       checkAuth: async () => {
-        const token = localStorage.getItem('access_token')
-        if (!token) {
-          set({ isAuthenticated: false, user: null })
-          return
-        }
-
         set({ isLoading: true })
         try {
           const user = await authService.getCurrentUser()
           set({
             user,
-            token,
             isAuthenticated: true,
             isLoading: false,
           })
         } catch (error) {
           set({
             user: null,
-            token: null,
             isAuthenticated: false,
             isLoading: false,
           })
-          localStorage.removeItem('access_token')
         }
       },
 
@@ -137,7 +121,6 @@ export const useAuthStore = create<AuthState>()(
       name: 'auth-storage',
       partialize: (state) => ({
         user: state.user,
-        token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
     }

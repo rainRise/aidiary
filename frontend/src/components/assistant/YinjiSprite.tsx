@@ -414,11 +414,11 @@ export default function YinjiSprite() {
       {open && !muted && (
         <div
           ref={panelRef}
-          className="fixed z-[9998] w-[360px] h-[510px] rounded-3xl border border-[#e9ddd5] bg-[linear-gradient(160deg,#fffdfa_0%,#fbf6f2_40%,#f7f2f8_100%)] shadow-[0_22px_50px_rgba(136,116,121,0.28)] overflow-hidden"
+          className="fixed z-[9998] w-[360px] h-[510px] rounded-3xl border border-[#e9ddd5] bg-[linear-gradient(160deg,#fffdfa_0%,#fbf6f2_40%,#f7f2f8_100%)] shadow-[0_22px_50px_rgba(136,116,121,0.28)] overflow-hidden flex flex-col"
           style={{ left: panelStyle.left, top: panelStyle.top }}
         >
           <div
-            className={`h-12 px-4 border-b border-[#ede2dc] flex items-center justify-between bg-white/65 ${panelDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            className={`shrink-0 h-12 px-4 border-b border-[#ede2dc] flex items-center justify-between bg-white/65 ${panelDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
             onPointerDown={beginPanelDrag}
             onPointerMove={onPanelDrag}
             onPointerUp={endPanelDrag}
@@ -453,7 +453,7 @@ export default function YinjiSprite() {
             </div>
           )}
 
-          <div className="h-[70px] border-b border-[#efe4de] px-3 py-2 bg-white/45">
+          <div className="shrink-0 border-b border-[#efe4de] px-3 py-2 bg-white/45">
             <div className="flex items-center gap-1.5 mb-1.5">
               <button onClick={createSession} className="px-2 py-1 rounded-lg text-xs text-stone-600 hover:bg-white border border-stone-200 flex items-center gap-1">
                 <PlusCircle className="w-3.5 h-3.5" /> 新对话
@@ -492,7 +492,7 @@ export default function YinjiSprite() {
             </div>
           </div>
 
-          <div className="h-[342px] overflow-y-auto px-3 py-3 space-y-2.5">
+          <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-2.5">
             {messages.length === 0 ? (
               <div className="text-center text-stone-400 text-sm pt-12">和我聊聊今天的感受吧</div>
             ) : (
@@ -513,7 +513,7 @@ export default function YinjiSprite() {
             )}
           </div>
 
-          <div className="h-[86px] border-t border-[#efe4de] px-3 py-2 bg-white/60">
+          <div className="shrink-0 border-t border-[#efe4de] px-3 py-2 bg-white/60">
             <div className="flex items-end gap-2">
               <textarea
                 value={input}

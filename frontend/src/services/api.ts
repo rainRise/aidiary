@@ -6,34 +6,55 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 180000,
+  withCredentials: true, // 自动携带 httpOnly cookie
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// 请求拦截器 - 添加token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('access_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
+// 是否正在刷新 token
+let isRefreshing = false
+let failedQueue: Array<{ resolve: (v: any) => void; reject: (e: any) => void }> = []
 
-// 响应拦截器 - 处理错误
+function processQueue(error: any) {
+  failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve(undefined)))
+  failedQueue = []
+}
+
+// 响应拦截器 - 401 时自动刷新 token
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token过期或无效，清除本地存储并跳转到登录页
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('user')
-      window.location.href = '/welcome'
+  async (error) => {
+    const originalRequest = error.config
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      // 如果是 refresh 接口本身返回 401，直接跳转登录
+      if (originalRequest.url?.includes('/auth/refresh')) {
+        window.location.href = '/welcome'
+        return Promise.reject(error)
+      }
+
+      if (isRefreshing) {
+        // 已经在刷新中，排队等待
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        }).then(() => api(originalRequest))
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      try {
+        await api.post('/api/v1/auth/refresh')
+        processQueue(null)
+        return api(originalRequest) // 重试原始请求
+      } catch (refreshError) {
+        processQueue(refreshError)
+        // refresh 也失败了，跳转登录
+        window.location.href = '/welcome'
+        return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
+      }
     }
     return Promise.reject(error)
   }

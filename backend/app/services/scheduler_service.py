@@ -75,28 +75,32 @@ async def _analyze_user_diaries_for_date(
 
 async def run_daily_analysis():
     """
-    扫描所有用户，对昨天有日记记录的用户执行AI精炼。
+    扫描所有用户，对昨天和今天有日记记录的用户执行规则提取 + AI精炼。
+    覆盖两天是因为：保存日记时不再即时处理，需要在午夜把当天的日记也一并分析。
     """
-    yesterday = date.today() - timedelta(days=1)
-    print(f"\n[Scheduler] === 每日分析任务开始 === 目标日期: {yesterday}")
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    target_dates = [yesterday, today]
+    print(f"\n[Scheduler] === 每日分析任务开始 === 目标日期: {yesterday} ~ {today}")
 
     async with async_session_maker() as db:
-        # 找出昨天有日记的所有用户
+        # 找出这两天有日记的所有用户
         user_result = await db.execute(
             select(Diary.user_id).where(
-                Diary.diary_date == yesterday
+                Diary.diary_date.in_(target_dates)
             ).distinct()
         )
         user_ids = [row[0] for row in user_result.all()]
 
         if not user_ids:
-            print("[Scheduler] 昨天无用户写日记，跳过")
+            print("[Scheduler] 这两天无用户写日记，跳过")
             return
 
         total = 0
         for uid in user_ids:
-            count = await _analyze_user_diaries_for_date(db, uid, yesterday)
-            total += count
+            for td in target_dates:
+                count = await _analyze_user_diaries_for_date(db, uid, td)
+                total += count
 
         print(f"[Scheduler] === 每日分析完成 === 用户数: {len(user_ids)}, 处理日记: {total}")
 

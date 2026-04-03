@@ -70,13 +70,12 @@ export const assistantService = {
     payload: { message: string; session_id?: number | null },
     callbacks: StreamCallbacks
   ): Promise<void> {
-    const token = localStorage.getItem('access_token')
     const base = getApiBaseUrl()
     const response = await fetch(`${base}/api/v1/assistant/chat/stream`, {
       method: 'POST',
+      credentials: 'include', // 自动携带 httpOnly cookie
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(payload),
     })

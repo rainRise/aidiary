@@ -69,12 +69,7 @@ async def create_diary(
     - **images**: 图片URL列表
     """
     diary = await diary_service.create_diary(db, current_user.id, diary_data)
-    try:
-        await timeline_service.upsert_event_from_diary(db, current_user.id, diary)
-    except Exception as e:
-        # 不阻断主流程，避免因为时间轴失败导致日记无法保存
-        print(f"[Timeline Auto Upsert] create_diary warning: {e}")
-    _schedule_ai_refine(current_user.id, diary.id)
+    # 时间轴事件生成和AI分析集中到每日0点定时任务处理
     return DiaryResponse.model_validate(diary)
 
 
@@ -159,12 +154,7 @@ async def update_diary(
             detail="日记不存在"
         )
 
-    try:
-        await timeline_service.upsert_event_from_diary(db, current_user.id, diary)
-    except Exception as e:
-        print(f"[Timeline Auto Upsert] update_diary warning: {e}")
-    _schedule_ai_refine(current_user.id, diary.id)
-
+    # 时间轴事件生成和AI分析集中到每日0点定时任务处理
     return DiaryResponse.model_validate(diary)
 
 

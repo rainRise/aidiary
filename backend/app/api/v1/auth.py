@@ -1,7 +1,8 @@
 """
 认证相关API端点
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -17,9 +18,44 @@ from app.schemas.auth import (
 )
 from app.services.auth_service import auth_service
 from app.core.deps import get_current_active_user
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_access_token,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+)
 from app.models.database import User
 
 router = APIRouter(prefix="/auth", tags=["认证"])
+
+
+def _set_auth_cookies(response: JSONResponse, access_token: str, refresh_token: str) -> None:
+    """将 token 设置到 httpOnly cookie 中"""
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,       # 生产环境应改为 True（需要 HTTPS）
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,       # 生产环境应改为 True
+        samesite="lax",
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/api/v1/auth",  # 只在 auth 路径下发送
+    )
+
+
+def _clear_auth_cookies(response: JSONResponse) -> None:
+    """清除认证 cookie"""
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/api/v1/auth")
 
 
 @router.post("/register/send-code", summary="发送注册验证码")
@@ -115,14 +151,19 @@ async def register(
             detail=message
         )
 
-    # 创建访问令牌
-    access_token = auth_service.create_token(user)
+    # 创建双 token
+    token_data = {"sub": str(user.id)}
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
 
-    return TokenResponse(
+    body = TokenResponse(
         access_token=access_token,
         token_type="bearer",
         user=UserResponse.model_validate(user)
     )
+    response = JSONResponse(content=body.model_dump(mode="json"))
+    _set_auth_cookies(response, access_token, refresh_token)
+    return response
 
 
 @router.post("/login/send-code", summary="发送登录验证码")
@@ -178,14 +219,19 @@ async def login(
             detail=message
         )
 
-    # 创建访问令牌
-    access_token = auth_service.create_token(user)
+    # 创建双 token
+    token_data = {"sub": str(user.id)}
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
 
-    return TokenResponse(
+    body = TokenResponse(
         access_token=access_token,
         token_type="bearer",
         user=UserResponse.model_validate(user)
     )
+    response = JSONResponse(content=body.model_dump(mode="json"))
+    _set_auth_cookies(response, access_token, refresh_token)
+    return response
 
 
 @router.post("/login/password", summary="密码登录")
@@ -211,13 +257,18 @@ async def login_with_password(
             detail=message
         )
 
-    access_token = auth_service.create_token(user)
+    token_data = {"sub": str(user.id)}
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
 
-    return TokenResponse(
+    body = TokenResponse(
         access_token=access_token,
         token_type="bearer",
         user=UserResponse.model_validate(user)
     )
+    response = JSONResponse(content=body.model_dump(mode="json"))
+    _set_auth_cookies(response, access_token, refresh_token)
+    return response
 
 
 @router.post("/reset-password/send-code", summary="发送重置密码验证码")
@@ -278,11 +329,63 @@ async def reset_password(
 @router.post("/logout", summary="用户登出")
 async def logout(current_user: User = Depends(get_current_active_user)):
     """
-    用户登出
-
-    （客户端删除令牌即可）
+    用户登出，清除 httpOnly cookie
     """
-    return {"success": True, "message": "登出成功"}
+    response = JSONResponse(content={"success": True, "message": "登出成功"})
+    _clear_auth_cookies(response)
+    return response
+
+
+@router.post("/refresh", summary="刷新 Access Token")
+async def refresh_access_token(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    使用 refresh_token cookie 签发新的 access_token。
+    前端在收到 401 时自动调用此接口。
+    """
+    rt = request.cookies.get("refresh_token")
+    if not rt:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="缺少 refresh token")
+
+    payload = decode_access_token(rt)
+    if payload is None or payload.get("type") != "refresh":
+        response = JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "refresh token 无效或已过期"}
+        )
+        _clear_auth_cookies(response)
+        return response
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token 数据异常")
+
+    from sqlalchemy import select
+    result = await db.execute(select(User).where(User.id == int(user_id)))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已禁用")
+
+    # 签发新的 access token（refresh token 不轮换，保持原来的）
+    new_access = create_access_token({"sub": str(user.id)})
+    response = JSONResponse(content={
+        "access_token": new_access,
+        "token_type": "bearer",
+        "user": UserResponse.model_validate(user).model_dump(mode="json"),
+    })
+    # 只更新 access_token cookie
+    response.set_cookie(
+        key="access_token",
+        value=new_access,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+    return response
 
 
 @router.get("/me", response_model=UserResponse, summary="获取当前用户信息")

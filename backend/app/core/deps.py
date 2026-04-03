@@ -3,7 +3,7 @@ FastAPI依赖项
 常用的依赖注入函数
 """
 from typing import Optional
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,26 +11,34 @@ from app.core.security import decode_access_token
 from app.db import get_db
 from app.models.database import User
 
-# HTTP Bearer认证
-security = HTTPBearer()
+# HTTP Bearer认证（设为可选，cookie 优先）
+security = HTTPBearer(auto_error=False)
+
+
+def _extract_token(request: Request, credentials: Optional[HTTPAuthorizationCredentials]) -> Optional[str]:
+    """
+    按优先级提取 access token：
+    1. httpOnly cookie "access_token"
+    2. Authorization: Bearer <token> 请求头
+    """
+    # 优先从 cookie 读取
+    cookie_token = request.cookies.get("access_token")
+    if cookie_token:
+        return cookie_token
+    # 回退到 Bearer header
+    if credentials:
+        return credentials.credentials
+    return None
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """
     获取当前登录用户
-
-    Args:
-        credentials: HTTP Bearer认证凭据
-        db: 数据库会话
-
-    Returns:
-        User: 当前用户对象
-
-    Raises:
-        HTTPException: 认证失败时抛出401
+    优先从 httpOnly cookie 读取 token，回退到 Authorization header。
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -38,18 +46,22 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    # 解码token
-    token = credentials.credentials
-    payload = decode_access_token(token)
+    token = _extract_token(request, credentials)
+    if not token:
+        raise credentials_exception
 
+    payload = decode_access_token(token)
     if payload is None:
+        raise credentials_exception
+
+    # 确保是 access token（非 refresh token）
+    if payload.get("type") not in (None, "access"):
         raise credentials_exception
 
     user_id: Optional[int] = payload.get("sub")
     if user_id is None:
         raise credentials_exception
 
-    # 查询用户
     from sqlalchemy import select
     result = await db.execute(select(User).where(User.id == int(user_id)))
     user = result.scalar_one_or_none()
