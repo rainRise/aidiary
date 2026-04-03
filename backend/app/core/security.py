@@ -13,7 +13,8 @@ from app.core.config import settings
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Token 过期时间
-ACCESS_TOKEN_EXPIRE_MINUTES = 30  # 短期 access token：30 分钟
+# access token 使用配置项，避免过短导致用户在长耗时分析中途掉线
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 REFRESH_TOKEN_EXPIRE_DAYS = 7     # 长期 refresh token：7 天
 
 

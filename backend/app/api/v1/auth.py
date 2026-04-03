@@ -17,6 +17,7 @@ from app.schemas.auth import (
     UserResponse
 )
 from app.services.auth_service import auth_service
+from app.core.config import settings
 from app.core.deps import get_current_active_user
 from app.core.security import (
     create_access_token,
@@ -26,6 +27,7 @@ from app.core.security import (
     REFRESH_TOKEN_EXPIRE_DAYS,
 )
 from app.models.database import User
+from app.core.rate_limit import send_code_limiter, auth_limiter
 
 router = APIRouter(prefix="/auth", tags=["认证"])
 
@@ -48,19 +50,20 @@ def _set_auth_cookies(response: JSONResponse, access_token: str, refresh_token: 
         secure=False,       # 生产环境应改为 True
         samesite="lax",
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
-        path="/api/v1/auth",  # 只在 auth 路径下发送
+        path="/",  # 放宽路径，避免某些代理/路由场景拿不到 refresh cookie
     )
 
 
 def _clear_auth_cookies(response: JSONResponse) -> None:
     """清除认证 cookie"""
     response.delete_cookie(key="access_token", path="/")
-    response.delete_cookie(key="refresh_token", path="/api/v1/auth")
+    response.delete_cookie(key="refresh_token", path="/")
 
 
 @router.post("/register/send-code", summary="发送注册验证码")
 async def send_register_code(
     request: SendCodeRequest,
+    raw_request: Request,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -69,6 +72,7 @@ async def send_register_code(
     - **email**: 邮箱地址
     - **type**: 可选，传入时必须为 "register"
     """
+    send_code_limiter.check(raw_request)
     if request.type and request.type != "register":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -92,6 +96,7 @@ async def send_register_code(
 @router.post("/register/verify", summary="验证注册验证码")
 async def verify_register_code(
     request: VerifyCodeRequest,
+    raw_request: Request,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -101,6 +106,7 @@ async def verify_register_code(
     - **code**: 6位验证码
     - **type**: 可选，传入时必须为 "register"
     """
+    auth_limiter.check(raw_request)
     if request.type and request.type != "register":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -124,6 +130,7 @@ async def verify_register_code(
 @router.post("/register", summary="用户注册")
 async def register(
     request: RegisterRequest,
+    raw_request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> TokenResponse:
     """
@@ -136,6 +143,7 @@ async def register(
 
     返回访问令牌和用户信息
     """
+    auth_limiter.check(raw_request)
     success, message, user = await auth_service.register(
         db,
         request.email,
@@ -169,6 +177,7 @@ async def register(
 @router.post("/login/send-code", summary="发送登录验证码")
 async def send_login_code(
     request: SendCodeRequest,
+    raw_request: Request,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -177,6 +186,7 @@ async def send_login_code(
     - **email**: 邮箱地址
     - **type**: 可选，传入时必须为 "login"
     """
+    send_code_limiter.check(raw_request)
     if request.type and request.type != "login":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -199,6 +209,7 @@ async def send_login_code(
 @router.post("/login", summary="用户登录")
 async def login(
     request: LoginRequest,
+    raw_request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> TokenResponse:
     """
@@ -209,6 +220,7 @@ async def login(
 
     返回访问令牌和用户信息
     """
+    auth_limiter.check(raw_request)
     success, message, user = await auth_service.login(
         db, request.email, request.code
     )
@@ -237,6 +249,7 @@ async def login(
 @router.post("/login/password", summary="密码登录")
 async def login_with_password(
     request: PasswordLoginRequest,
+    raw_request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> TokenResponse:
     """
@@ -247,6 +260,7 @@ async def login_with_password(
 
     返回访问令牌和用户信息
     """
+    auth_limiter.check(raw_request)
     success, message, user = await auth_service.login_with_password(
         db, request.email, request.password
     )
@@ -274,6 +288,7 @@ async def login_with_password(
 @router.post("/reset-password/send-code", summary="发送重置密码验证码")
 async def send_reset_password_code(
     request: SendCodeRequest,
+    raw_request: Request,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -282,6 +297,7 @@ async def send_reset_password_code(
     - **email**: 邮箱地址
     - **type**: 可选，传入时必须为 "reset"
     """
+    send_code_limiter.check(raw_request)
     if request.type and request.type != "reset":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -304,6 +320,7 @@ async def send_reset_password_code(
 @router.post("/reset-password", summary="重置密码")
 async def reset_password(
     request: ResetPasswordRequest,
+    raw_request: Request,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -313,6 +330,7 @@ async def reset_password(
     - **code**: 6位验证码
     - **new_password**: 新密码（至少6位）
     """
+    auth_limiter.check(raw_request)
     success, message = await auth_service.reset_password(
         db, request.email, request.code, request.new_password
     )
@@ -399,12 +417,21 @@ async def get_current_user_info(
 
 
 @router.get("/test-email", summary="测试邮件发送")
-async def test_email(email: str):
+async def test_email(
+    email: str,
+    current_user: User = Depends(get_current_active_user),
+):
     """
-    测试邮件发送功能（仅开发环境）
+    测试邮件发送功能（仅开发环境，需登录）
 
     - **email**: 测试邮箱地址
     """
+    if not settings.debug:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="此接口仅在开发环境可用"
+        )
+
     from app.services.email_service import email_service
 
     success = await email_service.send_test_email(email)
