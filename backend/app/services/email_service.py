@@ -29,8 +29,8 @@ class EmailService:
         self.smtp_host = settings.smtp_host
         self.smtp_port = settings.smtp_port
         self.smtp_secure = settings.smtp_secure
-        self.email = settings.smtp_email
-        self.password = settings.smtp_password
+        self.email = settings.smtp_username
+        self.password = settings.smtp_secret
         self.sender_name = settings.smtp_sender_name
         self.sender = settings.email_sender
 

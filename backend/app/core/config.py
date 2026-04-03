@@ -38,7 +38,7 @@ class Settings(BaseSettings):
 
     # ==================== SMTP邮箱配置 ====================
     smtp_host: str = Field(
-        ...,
+        default="smtp.qq.com",
         description="SMTP服务器地址"
     )
     smtp_port: int = Field(
@@ -50,24 +50,45 @@ class Settings(BaseSettings):
         description="是否使用SSL"
     )
     smtp_email: str = Field(
-        ...,
-        description="发件人邮箱地址"
+        default="",
+        description="发件人邮箱地址（新字段，推荐）"
     )
     smtp_password: str = Field(
-        ...,
-        description="SMTP密码/授权码"
+        default="",
+        description="SMTP密码/授权码（新字段，推荐）"
     )
     smtp_sender_name: str = Field(
         default="印记",
         description="发件人显示名称"
     )
 
+    # 兼容旧版 QQ 配置（平滑迁移）
+    qq_email: str = Field(
+        default="",
+        description="旧字段：QQ邮箱地址（兼容）"
+    )
+    qq_email_auth_code: str = Field(
+        default="",
+        description="旧字段：QQ邮箱授权码（兼容）"
+    )
+
+    @property
+    def smtp_username(self) -> str:
+        """优先使用新字段，否则回退旧字段"""
+        return self.smtp_email or self.qq_email
+
+    @property
+    def smtp_secret(self) -> str:
+        """优先使用新字段，否则回退旧字段"""
+        return self.smtp_password or self.qq_email_auth_code
+
     @property
     def email_sender(self) -> str:
         """获取完整的发件人字符串（包含显示名称）"""
+        sender_email = self.smtp_username
         if self.smtp_sender_name:
-            return f"{self.smtp_sender_name} <{self.smtp_email}>"
-        return self.smtp_email
+            return f"{self.smtp_sender_name} <{sender_email}>"
+        return sender_email
 
     # ==================== 验证码配置 ====================
     verification_code_expire_minutes: int = Field(
