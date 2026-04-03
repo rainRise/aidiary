@@ -290,38 +290,56 @@ export default function AnalysisOverview() {
       </header>
 
       <main className="max-w-lg mx-auto px-5 py-6 space-y-0">
-        {/* 控制面板 */}
-        <div className="rounded-2xl border border-sky-200 bg-white/80 backdrop-blur p-5 mb-6">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-sm text-stone-600">分析窗口</span>
-            {[30, 90, 180].map((d) => (
-              <button
-                key={d}
-                onClick={() => setWindowDays(d)}
-                className={`px-3 py-1.5 rounded-xl text-xs border transition-all ${
-                  windowDays === d
-                    ? 'text-white border-transparent shadow-sm'
-                    : 'text-stone-500 border-stone-200 bg-white'
-                }`}
-                style={windowDays === d ? { background: 'linear-gradient(135deg, #818cf8, #7c3aed)' } : undefined}
-              >
-                近 {d} 天
-              </button>
-            ))}
+        {/* 控制面板 + 冰山装饰 */}
+        <div className="rounded-2xl border border-sky-200 bg-white/80 backdrop-blur overflow-hidden mb-6 relative">
+          {/* 冰山 hero 装饰图 */}
+          {!result && !isLoading && (
+            <div className="flex flex-col items-center pt-6 pb-2">
+              <img
+                src="/images/iceberg-hero_1_no_bg.png"
+                alt="冰山"
+                className="w-36 h-auto opacity-90 drop-shadow-lg"
+              />
+              <p className="text-xs text-stone-400 mt-2 mb-1">选择时间窗口，探索你的内心冰山</p>
+            </div>
+          )}
+          <div className="p-5 pt-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-sm text-stone-600">分析窗口</span>
+              {[30, 90, 180].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setWindowDays(d)}
+                  className={`px-3 py-1.5 rounded-xl text-xs border transition-all ${
+                    windowDays === d
+                      ? 'text-white border-transparent shadow-sm'
+                      : 'text-stone-500 border-stone-200 bg-white'
+                  }`}
+                  style={windowDays === d ? { background: 'linear-gradient(135deg, #818cf8, #7c3aed)' } : undefined}
+                >
+                  近 {d} 天
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={runAnalysis}
+              disabled={isLoading}
+              className="mt-4 w-full h-11 rounded-2xl text-sm font-semibold text-white shadow-md disabled:opacity-50 transition-all active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #818cf8, #7c3aed)' }}
+            >
+              {isLoading ? '正在深入分析...' : '开始冰山之旅'}
+            </button>
           </div>
-          <button
-            onClick={runAnalysis}
-            disabled={isLoading}
-            className="mt-4 w-full h-11 rounded-2xl text-sm font-semibold text-white shadow-md disabled:opacity-50 transition-all active:scale-[0.98]"
-            style={{ background: 'linear-gradient(135deg, #818cf8, #7c3aed)' }}
-          >
-            {isLoading ? '正在深入分析...' : '开始冰山之旅'}
-          </button>
         </div>
 
         {/* 加载状态 */}
         {isLoading && (
-          <div className="rounded-2xl border border-sky-200 bg-white/80 backdrop-blur p-10 text-center mb-6">
+          <div className="rounded-2xl border border-sky-200 bg-white/80 backdrop-blur p-8 text-center mb-6">
+            <img
+              src="/images/iceberg-guide_1.png"
+              alt="探索中"
+              className="w-44 h-44 mx-auto rounded-xl object-cover opacity-80 mb-4"
+            />
             <Loading size="lg" />
             <p className="mt-4 text-stone-500 text-sm">正在检索日记 → 逐层分析冰山...</p>
             <p className="text-xs text-stone-400 mt-1">通常需要 30~60 秒</p>
@@ -366,9 +384,11 @@ export default function AnalysisOverview() {
                   className="rounded-2xl border border-amber-300/40 p-6 relative overflow-hidden"
                   style={{ background: 'linear-gradient(135deg, #fefce8, #fef9c3, #fef3c7)' }}
                 >
-                  <div className="absolute inset-0 opacity-[0.03]" style={{
-                    backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, #92400e 28px)',
-                  }} />
+                  <img
+                    src="/images/letter-bg_1.png"
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none"
+                  />
                   <div className="relative">
                     <div className="flex items-center gap-2 mb-4">
                       <Mail className="w-4 h-4 text-amber-600" />

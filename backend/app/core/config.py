@@ -36,18 +36,38 @@ class Settings(BaseSettings):
         description="访问令牌过期时间（分钟）默认7天"
     )
 
-    # ==================== QQ邮箱配置 ====================
-    qq_email: str = Field(
+    # ==================== SMTP邮箱配置 ====================
+    smtp_host: str = Field(
         ...,
-        description="QQ邮箱地址"
+        description="SMTP服务器地址"
     )
-    qq_email_auth_code: str = Field(
+    smtp_port: int = Field(
+        default=465,
+        description="SMTP端口"
+    )
+    smtp_secure: bool = Field(
+        default=True,
+        description="是否使用SSL"
+    )
+    smtp_email: str = Field(
         ...,
-        description="QQ邮箱授权码"
+        description="发件人邮箱地址"
     )
-    smtp_host: str = Field(default="smtp.qq.com", description="SMTP服务器地址")
-    smtp_port: int = Field(default=465, description="SMTP端口")
-    smtp_secure: bool = Field(default=True, description="是否使用SSL")
+    smtp_password: str = Field(
+        ...,
+        description="SMTP密码/授权码"
+    )
+    smtp_sender_name: str = Field(
+        default="印记",
+        description="发件人显示名称"
+    )
+
+    @property
+    def email_sender(self) -> str:
+        """获取完整的发件人字符串（包含显示名称）"""
+        if self.smtp_sender_name:
+            return f"{self.smtp_sender_name} <{self.smtp_email}>"
+        return self.smtp_email
 
     # ==================== 验证码配置 ====================
     verification_code_expire_minutes: int = Field(

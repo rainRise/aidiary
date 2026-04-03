@@ -1,6 +1,6 @@
 """
 邮件服务
-使用QQ SMTP发送验证码邮件
+使用 SMTP 发送验证码邮件
 支持 aiosmtplib 和内置 smtplib
 """
 import asyncio
@@ -29,8 +29,10 @@ class EmailService:
         self.smtp_host = settings.smtp_host
         self.smtp_port = settings.smtp_port
         self.smtp_secure = settings.smtp_secure
-        self.email = settings.qq_email
-        self.auth_code = settings.qq_email_auth_code
+        self.email = settings.smtp_email
+        self.password = settings.smtp_password
+        self.sender_name = settings.smtp_sender_name
+        self.sender = settings.email_sender
 
     @staticmethod
     def generate_code(length: int = 6) -> str:
@@ -112,7 +114,7 @@ class EmailService:
 
         # 创建邮件消息
         message = EmailMessage()
-        message["From"] = self.email
+        message["From"] = self.sender
         message["To"] = to_email
         message["Subject"] = subject
         message.set_content(body, charset="utf-8")
@@ -127,7 +129,7 @@ class EmailService:
                         hostname=self.smtp_host,
                         port=self.smtp_port,
                         username=self.email,
-                        password=self.auth_code,
+                        password=self.password,
                         use_tls=True
                     )
                 else:
@@ -137,7 +139,7 @@ class EmailService:
                         hostname=self.smtp_host,
                         port=self.smtp_port,
                         username=self.email,
-                        password=self.auth_code,
+                        password=self.password,
                         start_tls=True
                     )
             else:
@@ -163,13 +165,13 @@ class EmailService:
         if self.smtp_secure:
             # 使用SSL
             with smtplib.SMTP_SSL(self.smtp_host, self.smtp_port) as server:
-                server.login(self.email, self.auth_code)
+                server.login(self.email, self.password)
                 server.send_message(message)
         else:
             # 使用STARTTLS
             with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
                 server.starttls()
-                server.login(self.email, self.auth_code)
+                server.login(self.email, self.password)
                 server.send_message(message)
 
     async def send_test_email(self, to_email: str) -> bool:
@@ -195,7 +197,7 @@ class EmailService:
         """.strip()
 
         message = EmailMessage()
-        message["From"] = self.email
+        message["From"] = self.sender
         message["To"] = to_email
         message["Subject"] = subject
         message.set_content(body, charset="utf-8")
@@ -207,7 +209,7 @@ class EmailService:
                     hostname=self.smtp_host,
                     port=self.smtp_port,
                     username=self.email,
-                    password=self.auth_code,
+                    password=self.password,
                     use_tls=True
                 )
             else:

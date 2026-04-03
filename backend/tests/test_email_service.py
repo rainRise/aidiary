@@ -42,11 +42,12 @@ class TestEmailService:
         service = EmailService()
 
         # 检查配置
-        assert service.smtp_host == "smtp.qq.com"
+        assert service.smtp_host == "smtpdm-ap-southeast-1.aliyuncs.com"
         assert service.smtp_port == 465
         assert service.smtp_secure is True
-        assert service.email == "2337590486@qq.com"
-        assert service.auth_code == "lkvxwqnfjwvpdief"
+        assert service.email == "noreply@yingjiapp.com"
+        assert service.password == "YinjiMail2026AI"
+        assert service.sender_name == "YinJi 映记"
 
 
 @pytest.mark.asyncio

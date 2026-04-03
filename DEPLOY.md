@@ -65,8 +65,8 @@ nano .env  # 或使用 vim
 DEBUG=false
 ALLOWED_ORIGINS=["https://yourdomain.com","http://your-server-ip"]
 SECRET_KEY=生成一个新的密钥
-QQ_EMAIL=你的QQ邮箱
-QQ_EMAIL_AUTH_CODE=QQ邮箱授权码
+SMTP_EMAIL=noreply@yingjiapp.com
+SMTP_PASSWORD=你的SMTP密码
 DEEPSEEK_API_KEY=你的DeepSeek API密钥
 ```
 

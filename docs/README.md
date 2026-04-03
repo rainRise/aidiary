@@ -128,20 +128,22 @@ DATABASE_URL=sqlite+aiosqlite:///./yinji.db
 # JWT密钥（生产环境必须修改）
 SECRET_KEY=your-secret-key-here
 
-# QQ邮箱配置
-QQ_EMAIL=your-email@qq.com
-QQ_EMAIL_AUTH_CODE=your-auth-code
+# SMTP邮箱配置
+SMTP_HOST=smtpdm-ap-southeast-1.aliyuncs.com
+SMTP_EMAIL=noreply@yingjiapp.com
+SMTP_PASSWORD=your-smtp-password
 
 # DeepSeek API
 DEEPSEEK_API_KEY=your-api-key
 ```
 
-### QQ邮箱授权码获取
+### SMTP 配置说明
 
-1. 登录QQ邮箱
-2. 设置 → 账户 → POP3/IMAP/SMTP/Exchange/CardDAV/CalDAV服务
-3. 开启SMTP服务
-4. 生成授权码
+**阿里云邮件推送（新加坡）**：
+1. 登录阿里云控制台
+2. 进入 **邮件推送** → **发信地址管理**
+3. 查看 SMTP 配置信息
+4. 获取 SMTP 密码
 
 ## 📝 开发工作流
 

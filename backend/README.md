@@ -41,8 +41,8 @@ cp .env.example .env
 # 编辑 .env 文件，配置必要参数
 # 必须配置项：
 # - SECRET_KEY: JWT密钥（生产环境请使用 openssl rand -hex 32 生成）
-# - QQ_EMAIL: QQ邮箱地址
-# - QQ_EMAIL_AUTH_CODE: QQ邮箱授权码
+# - SMTP_EMAIL: 发件人邮箱地址
+# - SMTP_PASSWORD: SMTP密码
 ```
 
 ### 3. 运行应用
