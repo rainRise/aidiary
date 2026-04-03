@@ -1,5 +1,6 @@
 // API客户端配置
 import axios from 'axios'
+import { useAuthStore } from '@/store/authStore'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -15,10 +16,27 @@ export const api = axios.create({
 // 是否正在刷新 token
 let isRefreshing = false
 let failedQueue: Array<{ resolve: (v: any) => void; reject: (e: any) => void }> = []
+let hasRedirectedForAuth = false
 
 function processQueue(error: any) {
   failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve(undefined)))
   failedQueue = []
+}
+
+function handleAuthExpired() {
+  if (hasRedirectedForAuth) return
+  hasRedirectedForAuth = true
+
+  useAuthStore.setState({
+    user: null,
+    isAuthenticated: false,
+    isLoading: false,
+    error: null,
+  })
+
+  if (window.location.pathname !== '/welcome') {
+    window.location.replace('/welcome')
+  }
 }
 
 // 响应拦截器 - 401 时自动刷新 token
@@ -29,7 +47,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       // 如果是 refresh 接口本身返回 401，直接跳转登录
       if (originalRequest.url?.includes('/auth/refresh')) {
-        window.location.href = '/welcome'
+        handleAuthExpired()
         return Promise.reject(error)
       }
 
@@ -50,7 +68,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError)
         // refresh 也失败了，跳转登录
-        window.location.href = '/welcome'
+        handleAuthExpired()
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false
