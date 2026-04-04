@@ -31,7 +31,8 @@ class AgentOrchestrator:
         diary_content: str,
         diary_date,
         user_profile: Dict,
-        timeline_context: List[Dict]
+        timeline_context: List[Dict],
+        related_memories: List[Dict] = None,
     ) -> Dict:
         """
         完整的日记分析流程
@@ -43,6 +44,7 @@ class AgentOrchestrator:
             diary_date: 日记日期
             user_profile: 用户画像
             timeline_context: 时间轴上下文
+            related_memories: RAG检索到的相关历史日记记忆
 
         Returns:
             Dict: 分析结果
@@ -57,7 +59,7 @@ class AgentOrchestrator:
             "diary_date": diary_date,
             "user_profile": user_profile,
             "timeline_context": timeline_context,
-            "related_memories": [],
+            "related_memories": related_memories or [],
             "behavior_layer": {},
             "emotion_layer": {},
             "cognitive_layer": {},

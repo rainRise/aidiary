@@ -109,10 +109,17 @@ class ContextCollectorAgent:
         )
 
         try:
-            # 构建prompt
+            # 构建prompt（注入RAG历史记忆）
+            memories = state.get("related_memories") or []
+            if memories:
+                memories_text = json.dumps(memories, ensure_ascii=False, indent=2)
+            else:
+                memories_text = "无（尚未检索到相关历史记忆）"
+
             prompt = CONTEXT_COLLECTOR_PROMPT.format(
                 user_profile=json.dumps(user_profile, ensure_ascii=False, indent=2),
                 timeline_context=json.dumps(timeline_context, ensure_ascii=False, indent=2),
+                related_memories=memories_text,
                 diary_content=state["diary_content"]
             )
 

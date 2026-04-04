@@ -28,6 +28,7 @@ from app.models.diary import Diary, TimelineEvent, AIAnalysis, SocialPostSample
 from app.schemas.diary import TimelineEventCreate
 from app.services.diary_service import diary_service, timeline_service
 from app.services.rag_service import diary_rag_service
+from app.services.qdrant_memory_service import qdrant_diary_memory_service
 
 router = APIRouter(prefix="/ai", tags=["AI分析"])
 
@@ -502,6 +503,24 @@ async def analyze_diary(
         for event in timeline_events
     ]
 
+    # RAG 检索：从 Qdrant 获取相关历史记忆
+    related_memories = []
+    try:
+        # 用当前日记的关键内容作为查询，检索相关历史日记
+        query_text = integrated_content[:500]  # 取前500字作为检索 query
+        related_memories = await qdrant_diary_memory_service.retrieve_context(
+            db=db,
+            user_id=current_user.id,
+            query=query_text,
+            top_k=4,
+        )
+        if related_memories:
+            print(f"[RAG] 检索到 {len(related_memories)} 条相关历史记忆")
+        else:
+            print("[RAG] 未检索到相关历史记忆（Qdrant 可能未配置）")
+    except Exception as e:
+        print(f"[RAG] Qdrant 检索失败（降级为无记忆模式）: {e}")
+
     # 执行分析
     try:
         state = await agent_orchestrator.analyze_diary(
@@ -510,7 +529,8 @@ async def analyze_diary(
             diary_content=integrated_content,
             diary_date=anchor_date,
             user_profile=user_profile,
-            timeline_context=timeline_context
+            timeline_context=timeline_context,
+            related_memories=related_memories,
         )
 
         # 格式化结果
