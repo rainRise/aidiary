@@ -28,6 +28,7 @@ from app.core.security import (
 )
 from app.models.database import User
 from app.core.rate_limit import send_code_limiter, auth_limiter
+from app.services.captcha_service import captcha_service
 
 router = APIRouter(prefix="/auth", tags=["认证"])
 
@@ -60,6 +61,60 @@ def _clear_auth_cookies(response: JSONResponse) -> None:
     response.delete_cookie(key="refresh_token", path="/")
 
 
+def _verify_captcha_from_request(request: SendCodeRequest):
+    """从 SendCodeRequest 中校验滑动验证码"""
+    if not request.captcha_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="请先完成人机验证"
+        )
+    success, message = captcha_service.verify(
+        request.captcha_token,
+        request.captcha_x or 0,
+        request.captcha_duration or 0,
+    )
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+
+
+@router.get("/captcha", summary="获取滑动验证码")
+async def get_captcha():
+    """
+    获取滑动拼图验证码参数。
+    前端用 target_x/target_y 绘制缺口，用户滑动后提交 token + slide_x 校验。
+    """
+    return captcha_service.generate()
+
+
+@router.post("/captcha/verify", summary="校验滑动验证码")
+async def verify_captcha(
+    data: dict,
+):
+    """
+    校验滑动拼图结果。
+
+    - **token**: 从 /captcha 获取的 token
+    - **slide_x**: 用户滑动后拼图块的 x 坐标
+    - **duration**: 滑动耗时（毫秒）
+    """
+    token = data.get("token", "")
+    slide_x = data.get("slide_x", 0)
+    duration = data.get("duration", 0)
+
+    success, message = captcha_service.verify(token, slide_x, duration)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+
+    return {"success": True, "message": message}
+
+
 @router.post("/register/send-code", summary="发送注册验证码")
 async def send_register_code(
     request: SendCodeRequest,
@@ -73,6 +128,7 @@ async def send_register_code(
     - **type**: 可选，传入时必须为 "register"
     """
     send_code_limiter.check(raw_request)
+    _verify_captcha_from_request(request)
     if request.type and request.type != "register":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -187,6 +243,7 @@ async def send_login_code(
     - **type**: 可选，传入时必须为 "login"
     """
     send_code_limiter.check(raw_request)
+    _verify_captcha_from_request(request)
     if request.type and request.type != "login":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -298,6 +355,7 @@ async def send_reset_password_code(
     - **type**: 可选，传入时必须为 "reset"
     """
     send_code_limiter.check(raw_request)
+    _verify_captcha_from_request(request)
     if request.type and request.type != "reset":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

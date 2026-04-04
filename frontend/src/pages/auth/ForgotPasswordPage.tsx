@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { authService } from '@/services/auth.service'
 import { toast } from '@/components/ui/toast'
 import { Check, ArrowLeft } from 'lucide-react'
+import SliderCaptcha, { type CaptchaResult } from '@/components/common/SliderCaptcha'
 
 type Step = 1 | 2 | 3
 
@@ -18,14 +19,20 @@ export default function ForgotPasswordPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
+  const [showCaptcha, setShowCaptcha] = useState(false)
 
-  const handleSendCode = async () => {
+  const handleRequestCode = () => {
     if (!email || !email.includes('@')) {
       toast('请输入有效的邮箱地址', 'error')
       return
     }
+    setShowCaptcha(true)
+  }
+
+  const handleCaptchaSuccess = async (captchaResult: CaptchaResult) => {
+    setShowCaptcha(false)
     try {
-      await authService.sendResetPasswordCode(email)
+      await authService.sendResetPasswordCode(email, captchaResult)
       setStep(2)
       toast('验证码已发送到您的邮箱', 'success')
       setCountdown(60)
@@ -142,7 +149,7 @@ export default function ForgotPasswordPage() {
             </div>
             <button
               type="button"
-              onClick={handleSendCode}
+              onClick={handleRequestCode}
               disabled={!email || !email.includes('@') || countdown > 0}
               className="w-full h-12 rounded-2xl text-sm font-semibold text-white transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] shadow-md"
               style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
@@ -168,7 +175,7 @@ export default function ForgotPasswordPage() {
                 />
                 <button
                   type="button"
-                  onClick={handleSendCode}
+                  onClick={handleRequestCode}
                   disabled={countdown > 0}
                   className="shrink-0 h-12 px-4 rounded-2xl text-sm font-medium border border-[#dfccc2] text-[#b56f61] bg-[#f5efea] hover:bg-[#efe6e0] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                 >
@@ -247,6 +254,13 @@ export default function ForgotPasswordPage() {
           </div>
         )}
       </div>
+      {/* 滑动验证码弹窗 */}
+      {showCaptcha && (
+        <SliderCaptcha
+          onSuccess={handleCaptchaSuccess}
+          onClose={() => setShowCaptcha(false)}
+        />
+      )}
     </div>
   )
 }

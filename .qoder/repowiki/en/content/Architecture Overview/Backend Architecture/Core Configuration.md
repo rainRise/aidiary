@@ -13,7 +13,17 @@
 - [auth.py](file://backend/app/api/v1/auth.py)
 - [requirements.txt](file://backend/requirements.txt)
 - [DEPLOY.md](file://DEPLOY.md)
+- [test_email_service.py](file://backend/tests/test_email_service.py)
+- [test_smtp.py](file://backend/test_smtp.py)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated email configuration section to reflect replacement of QQ-specific fields with generic SMTP configuration scheme
+- Added documentation for new SMTP configuration fields (smtp_host, smtp_port, smtp_secure, smtp_email, smtp_password, smtp_sender_name)
+- Updated configuration reference table to include new SMTP fields
+- Enhanced troubleshooting guide with SMTP-specific configuration issues
+- Updated deployment examples to show SMTP configuration requirements
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -30,6 +40,8 @@
 ## Introduction
 This document provides comprehensive configuration documentation for the 映记 backend system. It explains how the FastAPI application is configured, how environment variables are managed, how the database is set up, how CORS is configured, and how security parameters are defined. It also documents the dependency injection system, service initialization, JWT settings, password hashing parameters, authentication middleware, environment setup, configuration validation, deployment-specific configurations, and environment-specific overrides for development, staging, and production.
 
+**Updated** The email configuration has been modernized from QQ-specific settings to a flexible SMTP configuration scheme that supports various email providers.
+
 ## Project Structure
 The configuration system centers around a small set of modules that define application-wide settings, security policies, dependency injection, and database initialization. The FastAPI application wires these together during startup and registers routers for API endpoints.
 
@@ -42,13 +54,13 @@ A --> E["app/core/security.py<br/>JWT/password helpers"]
 A --> F["app/models/database.py<br/>ORM models"]
 A --> G["app/api/v1/auth.py<br/>Auth endpoints"]
 G --> H["app/services/auth_service.py<br/>Auth business logic"]
-H --> I["app/services/email_service.py<br/>Email delivery"]
+H --> I["app/services/email_service.py<br/>SMTP email delivery"]
 C --> F
 ```
 
 **Diagram sources**
 - [main.py:42-87](file://backend/main.py#L42-L87)
-- [config.py:10-105](file://backend/app/core/config.py#L10-L105)
+- [config.py:10-125](file://backend/app/core/config.py#L10-L125)
 - [db.py:11-59](file://backend/app/db.py#L11-L59)
 - [deps.py:18-66](file://backend/app/core/deps.py#L18-L66)
 - [security.py:43-92](file://backend/app/core/security.py#L43-L92)
@@ -59,7 +71,7 @@ C --> F
 
 **Section sources**
 - [main.py:42-87](file://backend/main.py#L42-L87)
-- [config.py:10-105](file://backend/app/core/config.py#L10-L105)
+- [config.py:10-125](file://backend/app/core/config.py#L10-L125)
 - [db.py:11-59](file://backend/app/db.py#L11-L59)
 - [deps.py:18-66](file://backend/app/core/deps.py#L18-L66)
 - [security.py:43-92](file://backend/app/core/security.py#L43-L92)
@@ -80,7 +92,7 @@ Key configuration categories:
 - CORS origins
 - Database URL
 - JWT secret, algorithm, and expiration
-- Email provider settings (QQ SMTP)
+- **Updated** SMTP email configuration (replaces QQ-specific settings)
 - Verification code policy
 - LLM provider settings (DeepSeek)
 - Vector storage settings (Qdrant)
@@ -90,7 +102,7 @@ Validation and defaults:
 - Defaults provided for optional settings to enable local development.
 
 **Section sources**
-- [config.py:10-105](file://backend/app/core/config.py#L10-L105)
+- [config.py:10-125](file://backend/app/core/config.py#L10-L125)
 - [security.py:12-92](file://backend/app/core/security.py#L12-L92)
 - [deps.py:18-66](file://backend/app/core/deps.py#L18-L66)
 - [db.py:11-59](file://backend/app/db.py#L11-L59)
@@ -111,7 +123,7 @@ B["db.py: engine/session/init"]
 E["models/database.py: ORM models"]
 A["api/v1/auth.py: auth endpoints"]
 AS["services/auth_service.py: business logic"]
-ES["services/email_service.py: email delivery"]
+ES["services/email_service.py: SMTP email delivery"]
 end
 M --> C
 M --> B
@@ -129,7 +141,7 @@ B --> E
 - [main.py:42-87](file://backend/main.py#L42-L87)
 - [deps.py:18-66](file://backend/app/core/deps.py#L18-L66)
 - [security.py:43-92](file://backend/app/core/security.py#L43-L92)
-- [config.py:10-105](file://backend/app/core/config.py#L10-L105)
+- [config.py:10-125](file://backend/app/core/config.py#L10-L125)
 - [db.py:11-59](file://backend/app/db.py#L11-L59)
 - [database.py:13-70](file://backend/app/models/database.py#L13-L70)
 - [auth.py:22-200](file://backend/app/api/v1/auth.py#L22-L200)
@@ -142,16 +154,22 @@ B --> E
 - Settings class encapsulates all configuration keys with defaults and descriptions.
 - Environment file loading is configured with UTF-8 encoding and case-insensitive lookup.
 - CORS origins are parsed from a comma-separated string into a list for middleware configuration.
-- Required fields (e.g., JWT secret, email credentials) must be provided at runtime.
+- Required fields (e.g., JWT secret, SMTP credentials) must be provided at runtime.
+
+**Updated** The email configuration has been completely redesigned:
+- Replaced QQ-specific fields (qq_email, qq_email_auth_code) with generic SMTP fields
+- Added smtp_host, smtp_port, smtp_secure, smtp_email, smtp_password, smtp_sender_name
+- Enhanced email sender formatting with configurable display names
+- Improved error handling and fallback mechanisms
 
 Operational impact:
 - Changing allowed origins affects browser access.
 - Database URL controls persistence backend and connection behavior.
 - JWT parameters define token lifetime and signing method.
-- Email settings enable verification flows; missing values break registration/login.
+- **Updated** SMTP settings enable verification flows with any compliant email provider; missing values break registration/login.
 
 **Section sources**
-- [config.py:10-105](file://backend/app/core/config.py#L10-L105)
+- [config.py:10-125](file://backend/app/core/config.py#L10-L125)
 
 ### FastAPI Application Configuration
 - Application metadata (title, version) sourced from settings.
@@ -232,7 +250,7 @@ ActiveCheck --> |Yes| Proceed["Proceed to handler logic"]
 ### Authentication Middleware and Endpoints
 - Auth endpoints depend on get_current_active_user for protected operations.
 - Registration and login use verification codes stored in the database.
-- Email service sends codes via QQ SMTP with fallback to synchronous delivery.
+- **Updated** Email service sends codes via configurable SMTP with automatic SSL/TLS detection and fallback to synchronous delivery.
 - Rate limiting and expiration enforced by settings and database queries.
 
 ```mermaid
@@ -289,6 +307,12 @@ Auth-->>Client : "response"
 - Staging: Disable debug, use PostgreSQL, restrict allowed origins to staging domain, moderate rate limits.
 - Production: Disable debug, use secure secrets, strict allowed origins, robust rate limits, HTTPS-only, external SMTP, vector storage configured.
 
+**Updated** SMTP configuration requirements for production:
+- Use secure SMTP provider (e.g., Gmail, Outlook, custom SMTP)
+- Configure appropriate SSL/TLS settings based on provider requirements
+- Set up proper SPF/DKIM records for deliverability
+- Implement proper rate limiting and monitoring
+
 Note: Specific values are not hardcoded here; adjust the environment variables accordingly.
 
 **Section sources**
@@ -302,7 +326,7 @@ External libraries and their roles:
 - Pydantic and pydantic-settings for configuration modeling and environment loading.
 - python-jose for JWT encoding/decoding.
 - passlib with bcrypt for password hashing.
-- aiosmtplib for asynchronous SMTP; falls back to smtplib if unavailable.
+- **Updated** aiosmtplib for asynchronous SMTP; falls back to smtplib if unavailable.
 - httpx for HTTP client needs.
 - pytz for timezone utilities.
 
@@ -331,16 +355,26 @@ R --> TZ["pytz"]
 - Configure CORS narrowly to minimize preflight overhead.
 - Tune token expiration to balance security and UX.
 - Monitor database query logs during development; disable echo in production.
-- Prefer asynchronous SMTP when available; fallback is supported but may add latency.
+- **Updated** Prefer asynchronous SMTP when available; fallback is supported but may add latency.
+- **Updated** Configure SMTP connection pooling and proper timeout settings for production.
 
 ## Troubleshooting Guide
 Common configuration issues and resolutions:
 - CORS blocked requests: Verify allowed origins include frontend URLs.
 - JWT signature errors: Ensure SECRET_KEY matches across deployments and is sufficiently strong.
 - Database connection failures: Confirm DATABASE_URL format and credentials; check engine echo logs in debug mode.
-- Email sending failures: Validate QQ email settings, authorization code, and port/SSL configuration; check fallback behavior.
+- **Updated** Email sending failures: Validate SMTP settings (host, port, SSL/TLS), authorization credentials, and provider-specific requirements; check fallback behavior.
+- **Updated** SMTP authentication errors: Verify SMTP_USERNAME and SMTP_PASSWORD are correct; check if two-factor authentication requires app-specific passwords.
+- **Updated** SSL/TLS connection issues: Ensure smtp_secure setting matches provider requirements (465 for SSL, 587 for STARTTLS).
 - Rate limit exceeded: Adjust max_code_requests_per_5min and verification_code_expire_minutes.
 - Authentication failing: Confirm bearer token format and expiration; ensure user is active.
+
+**Updated** SMTP-specific troubleshooting:
+- Test SMTP connectivity using the built-in test endpoint
+- Verify DNS MX records and SPF/DKIM configuration
+- Check firewall and network restrictions blocking SMTP ports
+- Review SMTP provider quotas and rate limits
+- Monitor SMTP delivery logs and bounce messages
 
 **Section sources**
 - [config.py:17-100](file://backend/app/core/config.py#L17-L100)
@@ -350,7 +384,7 @@ Common configuration issues and resolutions:
 - [auth_service.py:50-51](file://backend/app/services/auth_service.py#L50-L51)
 
 ## Conclusion
-The 映记 backend’s configuration system is centralized, explicit, and validated at runtime. It cleanly separates concerns across environment management, security, database setup, and dependency injection. By adjusting environment variables per deployment target and following the provided deployment guide, teams can reliably operate the application across development, staging, and production environments.
+The 映记 backend's configuration system is centralized, explicit, and validated at runtime. It cleanly separates concerns across environment management, security, database setup, and dependency injection. **Updated** The email configuration has been modernized to support any SMTP provider, making the system more flexible and deployable across different hosting environments. By adjusting environment variables per deployment target and following the provided deployment guide, teams can reliably operate the application across development, staging, and production environments.
 
 ## Appendices
 
@@ -359,10 +393,18 @@ The 映记 backend’s configuration system is centralized, explicit, and valida
 - CORS: allowed_origins (comma-separated), parsed to cors_origins
 - Database: database_url
 - JWT: secret_key, algorithm, access_token_expire_minutes
-- Email (QQ SMTP): qq_email, qq_email_auth_code, smtp_host, smtp_port, smtp_secure
+- **Updated** SMTP email configuration: smtp_host, smtp_port, smtp_secure, smtp_email, smtp_password, smtp_sender_name
 - Verification code policy: verification_code_expire_minutes, max_code_requests_per_5min
 - LLM provider: deepseek_api_key, deepseek_base_url
 - Vector storage: qdrant_url, qdrant_api_key, qdrant_collection, qdrant_vector_dim
+
+**Updated** SMTP configuration details:
+- **smtp_host**: SMTP server address (e.g., smtp.gmail.com, smtp.office365.com)
+- **smtp_port**: SMTP server port (465 for SSL, 587 for STARTTLS)
+- **smtp_secure**: Boolean indicating SSL/TLS requirement
+- **smtp_email**: Sender email address
+- **smtp_password**: SMTP password or app-specific password
+- **smtp_sender_name**: Display name for email sender
 
 **Section sources**
 - [config.py:14-88](file://backend/app/core/config.py#L14-L88)

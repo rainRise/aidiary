@@ -10,8 +10,14 @@ import type {
 
 export const authService = {
   // 发送登录验证码
-  sendLoginCode: async (email: string) => {
-    const response = await api.post('/api/v1/auth/login/send-code', { email, type: 'login' })
+  sendLoginCode: async (email: string, captcha?: { token: string; slide_x: number; duration: number }) => {
+    const response = await api.post('/api/v1/auth/login/send-code', {
+      email,
+      type: 'login',
+      captcha_token: captcha?.token,
+      captcha_x: captcha?.slide_x,
+      captcha_duration: captcha?.duration,
+    })
     return response.data
   },
 
@@ -28,8 +34,14 @@ export const authService = {
   },
 
   // 发送注册验证码
-  sendRegisterCode: async (email: string) => {
-    const response = await api.post('/api/v1/auth/register/send-code', { email, type: 'register' })
+  sendRegisterCode: async (email: string, captcha?: { token: string; slide_x: number; duration: number }) => {
+    const response = await api.post('/api/v1/auth/register/send-code', {
+      email,
+      type: 'register',
+      captcha_token: captcha?.token,
+      captcha_x: captcha?.slide_x,
+      captcha_duration: captcha?.duration,
+    })
     return response.data
   },
 
@@ -46,8 +58,14 @@ export const authService = {
   },
 
   // 发送重置密码验证码
-  sendResetPasswordCode: async (email: string) => {
-    const response = await api.post('/api/v1/auth/reset-password/send-code', { email, type: 'reset' })
+  sendResetPasswordCode: async (email: string, captcha?: { token: string; slide_x: number; duration: number }) => {
+    const response = await api.post('/api/v1/auth/reset-password/send-code', {
+      email,
+      type: 'reset',
+      captcha_token: captcha?.token,
+      captcha_x: captcha?.slide_x,
+      captcha_duration: captcha?.duration,
+    })
     return response.data
   },
 

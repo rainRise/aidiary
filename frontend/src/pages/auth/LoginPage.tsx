@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { authService } from '@/services/auth.service'
 import { toast } from '@/components/ui/toast'
 import { Sparkles, Leaf, Brain } from 'lucide-react'
+import SliderCaptcha, { type CaptchaResult } from '@/components/common/SliderCaptcha'
 
 type LoginMode = 'password' | 'code'
 
@@ -18,14 +19,20 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [code, setCode] = useState('')
   const [countdown, setCountdown] = useState(0)
+  const [showCaptcha, setShowCaptcha] = useState(false)
 
-  const handleSendCode = async () => {
+  const handleRequestCode = () => {
     if (!email || !email.includes('@')) {
       toast('请输入有效的邮箱地址', 'error')
       return
     }
+    setShowCaptcha(true)
+  }
+
+  const handleCaptchaSuccess = async (captchaResult: CaptchaResult) => {
+    setShowCaptcha(false)
     try {
-      await authService.sendLoginCode(email)
+      await authService.sendLoginCode(email, captchaResult)
       toast('验证码已发送', 'success')
       setCountdown(60)
       const timer = setInterval(() => {
@@ -211,7 +218,7 @@ export default function LoginPage() {
                   />
                   <button
                     type="button"
-                    onClick={handleSendCode}
+                    onClick={handleRequestCode}
                     disabled={!email || !email.includes('@') || countdown > 0}
                     className="shrink-0 h-12 px-4 rounded-2xl text-sm font-medium border border-[#dfccc2] text-[#b56f61] bg-[#f5efea] hover:bg-[#efe6e0] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
                   >
@@ -256,7 +263,13 @@ export default function LoginPage() {
           </form>
         </div>
       </div>
+      {/* 滑动验证码弹窗 */}
+      {showCaptcha && (
+        <SliderCaptcha
+          onSuccess={handleCaptchaSuccess}
+          onClose={() => setShowCaptcha(false)}
+        />
+      )}
     </div>
   )
 }
-

@@ -15,6 +15,9 @@ class SendCodeRequest(BaseModel):
         pattern="^(register|login|reset)$",
         description="验证码类型：register、login或reset（兼容字段，可不传）"
     )
+    captcha_token: Optional[str] = Field(None, description="滑动验证码 token（通过人机验证后获得）")
+    captcha_x: Optional[float] = Field(None, description="滑动验证码用户滑动 x 坐标")
+    captcha_duration: Optional[int] = Field(None, description="滑动验证码耗时（ms）")
 
 
 class VerifyCodeRequest(BaseModel):

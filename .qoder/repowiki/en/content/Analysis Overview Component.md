@@ -3,6 +3,8 @@
 <cite>
 **Referenced Files in This Document**
 - [AnalysisOverview.tsx](file://frontend/src/pages/analysis/AnalysisOverview.tsx)
+- [Loading.tsx](file://frontend/src/components/common/Loading.tsx)
+- [button.tsx](file://frontend/src/components/ui/button.tsx)
 - [analysis.ts](file://frontend/src/types/analysis.ts)
 - [ai.service.ts](file://frontend/src/services/ai.service.ts)
 - [ai.py](file://backend/app/api/v1/ai.py)
@@ -15,22 +17,32 @@
 - [diary.schema.py](file://backend/app/schemas/diary.py)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Added comprehensive visual enhancement documentation for ice-themed decorative elements
+- Documented iceberg images during idle states and loading screen animations
+- Updated button styling documentation with gradient backgrounds and hover effects
+- Enhanced visual design system documentation with new color schemes and styling patterns
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
 3. [Core Components](#core-components)
 4. [Architecture Overview](#architecture-overview)
 5. [Detailed Component Analysis](#detailed-component-analysis)
-6. [Dependency Analysis](#dependency-analysis)
-7. [Performance Considerations](#performance-considerations)
-8. [Troubleshooting Guide](#troubleshooting-guide)
-9. [Conclusion](#conclusion)
+6. [Visual Enhancement System](#visual-enhancement-system)
+7. [Dependency Analysis](#dependency-analysis)
+8. [Performance Considerations](#performance-considerations)
+9. [Troubleshooting Guide](#troubleshooting-guide)
+10. [Conclusion](#conclusion)
 
 ## Introduction
 
 The Analysis Overview Component is a sophisticated React-based interface that presents comprehensive psychological insights derived from user journal entries using the Satir Iceberg Model. This component serves as the primary user interface for displaying multi-layered analysis results, featuring five distinct depth levels that progressively reveal deeper psychological patterns and insights.
 
 The component integrates advanced AI-powered analysis capabilities, combining Retrieval-Augmented Generation (RAG) techniques with multi-agent orchestration to provide users with meaningful self-reflection opportunities. It transforms raw journal data into structured insights about behavior patterns, emotional trends, cognitive processes, core beliefs, and deepest desires.
+
+**Updated** Enhanced with comprehensive ice-themed visual design system including decorative elements, loading animations, and improved button styling with gradient backgrounds and hover effects.
 
 ## Project Structure
 
@@ -42,6 +54,8 @@ subgraph "Frontend Layer"
 AO[AnalysisOverview.tsx]
 AS[ai.service.ts]
 AT[analysis.ts]
+LC[Loading Component]
+BT[Button Component]
 end
 subgraph "Backend Layer"
 API[AI API Endpoints]
@@ -64,15 +78,19 @@ AGENTS --> LLM
 API --> RAG
 API --> MODELS
 LLM --> DEEPSEEK
+AO --> LC
+AO --> BT
 ```
 
 **Diagram sources**
-- [AnalysisOverview.tsx:1-395](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L1-L395)
+- [AnalysisOverview.tsx:1-415](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L1-L415)
+- [Loading.tsx:1-55](file://frontend/src/components/common/Loading.tsx#L1-L55)
+- [button.tsx:1-52](file://frontend/src/components/ui/button.tsx#L1-L52)
 - [ai.service.ts:1-112](file://frontend/src/services/ai.service.ts#L1-L112)
 - [ai.py:268-388](file://backend/app/api/v1/ai.py#L268-L388)
 
 **Section sources**
-- [AnalysisOverview.tsx:1-395](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L1-L395)
+- [AnalysisOverview.tsx:1-415](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L1-L415)
 - [ai.service.ts:1-112](file://frontend/src/services/ai.service.ts#L1-L112)
 - [ai.py:268-388](file://backend/app/api/v1/ai.py#L268-L388)
 
@@ -80,7 +98,7 @@ LLM --> DEEPSEEK
 
 ### Frontend Analysis Component
 
-The Analysis Overview Component is built around several key frontend elements:
+The Analysis Overview Component is built around several key frontend elements with enhanced visual design:
 
 #### Iceberg Layer Configuration
 The component defines five distinct layers of psychological analysis, each with unique visual styling and semantic meaning:
@@ -100,6 +118,7 @@ Each layer is presented as an expandable card with smooth animations and progres
 - **Expanded Details**: Full breakdown of patterns, evidence, and insights
 - **Visual Enhancements**: Color-coded indicators, emotion flow visualization
 - **Progressive Animation**: Staggered entrance effects for depth perception
+- **Ice-Themed Styling**: Layer-specific gradient backgrounds and border styles
 
 #### Evidence Presentation
 The component displays supporting evidence with:
@@ -108,10 +127,17 @@ The component displays supporting evidence with:
 - **Context Snippets**: Extracted text fragments from original entries
 - **Reason Classification**: Why each piece was selected for analysis
 
+#### Visual Decorative Elements
+The component incorporates comprehensive ice-themed decorative elements:
+- **Hero Iceberg Images**: During idle states, decorative iceberg imagery enhances the thematic experience
+- **Loading Screen Graphics**: Animated exploration graphics provide engaging feedback during analysis
+- **Background Gradients**: Multi-layered gradient backgrounds create immersive visual depth
+- **Subtle Animations**: Progressive disclosure animations with staggered timing
+
 **Section sources**
 - [AnalysisOverview.tsx:8-60](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L8-L60)
 - [AnalysisOverview.tsx:80-238](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L80-L238)
-- [AnalysisOverview.tsx:240-395](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L240-L395)
+- [AnalysisOverview.tsx:240-415](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L240-L415)
 
 ### Backend Analysis Pipeline
 
@@ -165,7 +191,7 @@ Agents-->>BE : Return Structured Analysis
 BE->>DB : Store Analysis Results
 DB-->>BE : Confirm Storage
 BE-->>FE : Return Complete Analysis
-FE-->>User : Display Results
+FE-->>User : Display Results with Visual Enhancements
 Note over User,DB : Analysis Stored for Future Reference
 ```
 
@@ -183,7 +209,7 @@ The architecture follows these key principles:
 4. **Persistence**: Analysis Results → Database Storage
 
 ### Error Handling Strategy
-- **Frontend**: Graceful loading states and error messaging
+- **Frontend**: Graceful loading states and error messaging with visual feedback
 - **Backend**: Comprehensive exception handling with fallback responses
 - **API Layer**: HTTP status codes and detailed error messages
 - **Database**: Transaction rollback and warning propagation
@@ -215,8 +241,8 @@ Viewing --> Success : User Collapses Cards
 **Diagram sources**
 - [AnalysisOverview.tsx:241-263](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L241-L263)
 
-#### Visual Design System
-The component employs a sophisticated color and animation system:
+#### Enhanced Visual Design System
+The component employs a sophisticated color and animation system with comprehensive ice-themed styling:
 
 | Layer | Gradient | Border | Text Color | Tag Background |
 |-------|----------|--------|------------|----------------|
@@ -226,16 +252,26 @@ The component employs a sophisticated color and animation system:
 | Belief | Violet | Violet-300 | Violet-100 | Violet-900/30 |
 | Yearning | Purple | Purple-400 | Amber-100 | Purple-900/30 |
 
-#### Animation and Interaction Patterns
-The component implements progressive disclosure with:
-- **Staggered Animations**: Cards appear with increasing delays (120ms intervals)
-- **Smooth Transitions**: Opacity and position changes with 700ms duration
-- **Interactive Elements**: Expand/collapse buttons with chevron icons
-- **Visual Feedback**: Hover states and active selections
+#### Advanced Animation and Interaction Patterns
+The component implements progressive disclosure with enhanced visual effects:
+- **Staggered Animations**: Cards appear with increasing delays (120ms intervals) with smooth opacity transitions
+- **Gradient Backgrounds**: Layer-specific linear gradients create visual depth and thematic consistency
+- **Interactive Elements**: Expand/collapse buttons with chevron icons and hover effects
+- **Visual Feedback**: Enhanced hover states with color transitions and active selections
+- **Ice-Themed Decorations**: Subtle decorative elements and background gradients
+
+#### Button Styling Enhancements
+The component utilizes improved button styling with:
+- **Gradient Backgrounds**: Linear gradients for primary action buttons
+- **Hover Effects**: Smooth color transitions and scaling animations
+- **Active States**: Press-down animations for tactile feedback
+- **Disabled States**: Reduced opacity for non-interactive elements
+- **Consistent Sizing**: Standardized dimensions with responsive design
 
 **Section sources**
 - [AnalysisOverview.tsx:8-60](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L8-L60)
-- [AnalysisOverview.tsx:241-395](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L241-L395)
+- [AnalysisOverview.tsx:241-415](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L241-L415)
+- [button.tsx:6-30](file://frontend/src/components/ui/button.tsx#L6-L30)
 
 ### Backend Processing Pipeline
 
@@ -380,6 +416,83 @@ ICEBERG_ANALYSIS_RESPONSE ||--|| YEARNING_LAYER
 - [analysis.ts:119-139](file://frontend/src/types/analysis.ts#L119-L139)
 - [analysis.ts:46-139](file://frontend/src/types/analysis.ts#L46-L139)
 
+## Visual Enhancement System
+
+### Ice-Themed Decorative Elements
+
+The Analysis Overview Component incorporates comprehensive ice-themed visual enhancements:
+
+#### Hero Image System
+During idle states, the component displays decorative iceberg imagery:
+- **Hero Iceberg Image**: Prominent iceberg illustration with transparency and drop shadow effects
+- **Thematic Consistency**: Images use transparent backgrounds to blend with gradient backgrounds
+- **Responsive Design**: Images scale appropriately across different screen sizes
+- **Visual Depth**: Opacity and shadow effects create layered visual appeal
+
+#### Loading Screen Animations
+Enhanced loading states feature animated exploration graphics:
+- **Animated Exploration Graphics**: Custom animated SVG graphics for loading feedback
+- **Progressive Loading**: Staggered loading indicators with smooth transitions
+- **Thematic Loading**: Ice-themed loading animations that match the overall design language
+- **User Engagement**: Engaging animations keep users informed during processing
+
+#### Background Gradient System
+The component uses sophisticated multi-layered gradient backgrounds:
+- **Multi-Tone Gradients**: Complex gradient combinations from light blue to deep purple
+- **Directional Flow**: Diagonal gradient directions that enhance visual movement
+- **Subtle Transitions**: Smooth color transitions that complement the ice theme
+- **Responsive Gradients**: Backgrounds adapt to different screen orientations
+
+#### Layer-Specific Visual Styling
+Each analysis layer receives unique visual treatment:
+- **Gradient Backgrounds**: Each layer has its own custom gradient scheme
+- **Border Styles**: Distinct border treatments for visual layer separation
+- **Text Color Schemes**: Layer-appropriate text colors for readability
+- **Tag Backgrounds**: Specialized tag styling with appropriate contrast
+
+### Enhanced Button Styling System
+
+The component implements improved button styling with gradient backgrounds and hover effects:
+
+#### Primary Action Buttons
+- **Gradient Backgrounds**: Linear gradients from vibrant blues to purples
+- **Hover Animations**: Smooth color transitions and slight scaling effects
+- **Active States**: Press-down animations for tactile feedback
+- **Disabled States**: Reduced opacity and subtle styling changes
+
+#### Secondary Action Buttons
+- **Transparent Styling**: Semi-transparent backgrounds with border accents
+- **Active Highlighting**: Subtle glow effects on active states
+- **Consistent Dimensions**: Standardized sizing with responsive adjustments
+
+#### Interactive Element Enhancements
+- **Hover Effects**: Smooth transitions for all interactive elements
+- **Focus States**: Clear visual indicators for keyboard navigation
+- **Touch Targets**: Adequate sizing for mobile interaction
+- **Accessibility**: Proper contrast ratios and focus management
+
+### Animation and Transition System
+
+The component implements a comprehensive animation framework:
+
+#### Progressive Disclosure
+- **Staggered Appearances**: 120ms delays between card animations
+- **Smooth Transitions**: 700ms duration for opacity and position changes
+- **Depth Perception**: Sequential animations create visual depth hierarchy
+- **Performance Optimization**: Efficient animation timing and easing functions
+
+#### Loading Animations
+- **Spinner Animations**: Smooth rotating indicators with proper accessibility
+- **Progress Indicators**: Visual feedback for long-running operations
+- **State Transitions**: Seamless switching between different UI states
+- **Performance Monitoring**: Timely feedback for user experience
+
+**Section sources**
+- [AnalysisOverview.tsx:278-347](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L278-L347)
+- [AnalysisOverview.tsx:380-403](file://frontend/src/pages/analysis/AnalysisOverview.tsx#L380-L403)
+- [Loading.tsx:9-45](file://frontend/src/components/common/Loading.tsx#L9-L45)
+- [button.tsx:6-30](file://frontend/src/components/ui/button.tsx#L6-L30)
+
 ## Dependency Analysis
 
 The Analysis Overview Component exhibits strong modularity with clear dependency boundaries:
@@ -390,6 +503,8 @@ subgraph "Frontend Dependencies"
 AO[AnalysisOverview.tsx]
 AT[analysis.ts]
 AS[ai.service.ts]
+LC[Loading Component]
+BT[Button Component]
 end
 subgraph "Backend Dependencies"
 API[ai.py]
@@ -415,6 +530,8 @@ API --> RAG
 API --> MODELS
 RAG --> SQL
 MODELS --> SQL
+AO --> LC
+AO --> BT
 style AO fill:#e1f5fe
 style API fill:#f3e5f5
 style DS fill:#fff3e0
@@ -427,12 +544,13 @@ style DS fill:#fff3e0
 
 ### Component Coupling Analysis
 
-The component demonstrates excellent separation of concerns:
+The component demonstrates excellent separation of concerns with enhanced visual integration:
 
-- **Frontend**: Pure UI logic with minimal business logic
+- **Frontend**: Pure UI logic with minimal business logic and comprehensive visual enhancements
 - **Backend**: Well-structured API layer with clear service boundaries
 - **Data Access**: Clean SQLAlchemy models with proper relationships
 - **External Integration**: Dedicated LLM client with clear interface
+- **Visual Components**: Separate loading and button components for reusability
 
 ### Potential Circular Dependencies
 No circular dependencies detected in the analysis component structure.
@@ -445,17 +563,20 @@ No circular dependencies detected in the analysis component structure.
 ## Performance Considerations
 
 ### Frontend Performance Optimization
-The Analysis Overview Component implements several performance optimization strategies:
+The Analysis Overview Component implements several performance optimization strategies with enhanced visual considerations:
 
 #### Lazy Loading and Progressive Rendering
-- **Staggered Card Appearances**: 120ms delays between card animations
+- **Staggered Card Appearances**: 120ms delays between card animations with smooth transitions
 - **Conditional Rendering**: Evidence only loaded when cards are expanded
 - **Memory Management**: Proper cleanup of animation listeners and timers
+- **Image Optimization**: Efficient loading of decorative iceberg images
+- **Animation Performance**: Hardware-accelerated CSS transitions for smooth animations
 
 #### Network Optimization
 - **Request Debouncing**: Prevents rapid successive analysis requests
 - **Error Caching**: Failed requests are not retried automatically
 - **Timeout Handling**: 60-second timeout for analysis completion
+- **Background Loading**: Visual assets load independently of core functionality
 
 ### Backend Performance Strategies
 The backend implements comprehensive optimization techniques:
@@ -464,6 +585,7 @@ The backend implements comprehensive optimization techniques:
 - **Chunk Size Optimization**: 260-character chunks with 40-character overlap
 - **Early Termination**: Stop processing when sufficient evidence found
 - **Memory Management**: Efficient token counting and deduplication
+- **Agent Parallelization**: Multiple agents can operate concurrently
 
 #### Agent Parallelization
 - **Asynchronous Processing**: Multiple agents can operate concurrently
@@ -474,6 +596,7 @@ The backend implements comprehensive optimization techniques:
 - **Database Indexing**: Proper indexing on user_id, diary_date, and created_at
 - **Pagination**: Limits on returned evidence items (max 18)
 - **Caching**: Analysis results cached for quick retrieval
+- **Asset Optimization**: Efficient image compression and caching strategies
 
 ## Troubleshooting Guide
 
@@ -485,12 +608,14 @@ The backend implements comprehensive optimization techniques:
 - Network connectivity issues
 - Backend API timeouts
 - Large analysis windows requiring extensive processing
+- Visual asset loading failures
 
 **Solutions**:
 1. Verify network connectivity
 2. Reduce analysis window size (30 days vs 90 days)
 3. Check browser console for JavaScript errors
 4. Clear browser cache and retry
+5. Verify visual asset URLs are accessible
 
 #### Visual Rendering Issues
 **Symptoms**: Cards not appearing or animations not working
@@ -498,11 +623,15 @@ The backend implements comprehensive optimization techniques:
 - CSS animation conflicts
 - Browser compatibility issues
 - DOM manipulation errors
+- Missing visual assets
+- Gradient rendering issues
 
 **Solutions**:
 1. Check browser developer tools for CSS errors
 2. Verify animation support in target browsers
 3. Test with different browsers/devices
+4. Verify all visual assets are properly loaded
+5. Check gradient rendering support in older browsers
 
 ### Backend Troubleshooting
 
@@ -524,12 +653,14 @@ The backend implements comprehensive optimization techniques:
 - Insufficient journal entries
 - LLM API rate limiting
 - Database performance issues
+- Visual processing overhead
 
 **Solutions**:
 1. Ensure adequate journal history (minimum 3 entries)
 2. Check LLM API quota limits
 3. Monitor database query performance
 4. Consider reducing analysis window size
+5. Optimize visual asset delivery
 
 ### Database and Persistence Issues
 
@@ -555,9 +686,13 @@ The backend implements comprehensive optimization techniques:
 
 The Analysis Overview Component represents a sophisticated implementation of modern web application architecture, seamlessly integrating frontend interactivity with backend AI-powered analysis capabilities. The component successfully bridges the gap between complex psychological analysis and intuitive user experience through careful design and implementation choices.
 
+**Updated** The component now features comprehensive visual enhancements including ice-themed decorative elements, iceberg images during idle states, animated exploration graphics for loading screens, and improved button styling with gradient backgrounds and hover effects. These enhancements significantly improve the user experience while maintaining the technical excellence and architectural integrity of the original design.
+
 ### Key Strengths
 
 **Architectural Excellence**: The component demonstrates excellent separation of concerns with clear frontend/backend boundaries, modular agent systems, and robust data flow patterns.
+
+**Enhanced User Experience**: The comprehensive visual enhancement system creates an immersive ice-themed experience with decorative elements, loading animations, and polished interactive components.
 
 **User Experience Innovation**: The progressive disclosure approach, smooth animations, and layered presentation create an engaging and meaningful user journey through psychological self-discovery.
 
@@ -571,4 +706,6 @@ The Analysis Overview Component represents a sophisticated implementation of mod
 
 **Testing Coverage**: Expanded unit and integration testing would improve reliability and maintainability.
 
-The Analysis Overview Component serves as an exemplary model for building complex, data-driven applications that prioritize both technical excellence and user experience. Its modular architecture and clear design patterns provide a solid foundation for future enhancements and extensions.
+**Visual Asset Management**: Consider implementing more efficient asset loading strategies and fallback mechanisms for better performance.
+
+The Analysis Overview Component serves as an exemplary model for building complex, data-driven applications that prioritize both technical excellence and user experience. Its modular architecture, clear design patterns, and comprehensive visual enhancement system provide a solid foundation for future enhancements and extensions.

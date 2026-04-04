@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { authService } from '@/services/auth.service'
 import { toast } from '@/components/ui/toast'
 import { Check } from 'lucide-react'
+import SliderCaptcha, { type CaptchaResult } from '@/components/common/SliderCaptcha'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -19,14 +20,20 @@ export default function RegisterPage() {
   const [countdown, setCountdown] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [showCaptcha, setShowCaptcha] = useState(false)
 
-  const handleSendCode = async () => {
+  const handleRequestCode = () => {
     if (!email || !email.includes('@')) {
       toast('请输入有效的邮箱地址', 'error')
       return
     }
+    setShowCaptcha(true)
+  }
+
+  const handleCaptchaSuccess = async (captchaResult: CaptchaResult) => {
+    setShowCaptcha(false)
     try {
-      await authService.sendRegisterCode(email)
+      await authService.sendRegisterCode(email, captchaResult)
       setStep(2)
       toast('验证码已发送到您的邮箱', 'success')
       setCountdown(60)
@@ -39,6 +46,11 @@ export default function RegisterPage() {
     } catch (err: any) {
       toast(err.response?.data?.detail || '发送验证码失败', 'error')
     }
+  }
+
+  const handleResendCode = () => {
+    if (countdown > 0) return
+    setShowCaptcha(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -200,7 +212,7 @@ export default function RegisterPage() {
                 {step === 1 && (
                   <button
                     type="button"
-                    onClick={handleSendCode}
+                    onClick={handleRequestCode}
                     disabled={!email || !email.includes('@') || countdown > 0}
                     className="shrink-0 h-12 px-4 rounded-2xl text-sm font-medium text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
                     style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
@@ -233,7 +245,7 @@ export default function RegisterPage() {
                     />
                     <button
                       type="button"
-                      onClick={handleSendCode}
+                      onClick={handleResendCode}
                       disabled={countdown > 0}
                       className="shrink-0 h-12 px-4 rounded-2xl text-sm font-medium border border-[#dfccc2] text-[#b56f61] bg-[#f5efea] hover:bg-[#efe6e0] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                     >
@@ -363,8 +375,13 @@ export default function RegisterPage() {
           </form>
         </div>
       </div>
+      {/* 滑动验证码弹窗 */}
+      {showCaptcha && (
+        <SliderCaptcha
+          onSuccess={handleCaptchaSuccess}
+          onClose={() => setShowCaptcha(false)}
+        />
+      )}
     </div>
   )
 }
-
-
