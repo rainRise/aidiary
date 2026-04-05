@@ -255,9 +255,18 @@ export default function Dashboard() {
         {/* 情绪统计图表 */}
         {localEmotionStats.length > 0 && (
           <div className="card-warm p-6">
-            <div className="flex items-center gap-2 mb-1">
-              <MessageCircle className="w-4.5 h-4.5 text-[#b56f61]" />
-              <h2 className="text-sm font-semibold text-stone-700">情绪分布</h2>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4.5 h-4.5 text-[#b56f61]" />
+                <h2 className="text-sm font-semibold text-stone-700">情绪分布</h2>
+              </div>
+              <button
+                onClick={() => navigate('/emotion')}
+                className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-xl border border-rose-100 text-rose-500 hover:bg-rose-50 transition-colors"
+              >
+                <Orbit className="w-3.5 h-3.5" />
+                进入情绪星图
+              </button>
             </div>
             <p className="text-xs text-stone-400 mb-4 ml-7">近 30 天的情绪变化</p>
             <EmotionChart data={localEmotionStats} type="bubble" />
