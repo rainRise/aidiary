@@ -8,6 +8,7 @@ export interface Diary {
   user_id: number
   title: string
   content: string
+  content_html?: string
   diary_date: string
   emotion_tags: EmotionTag[]
   importance_score: number
@@ -21,6 +22,7 @@ export interface Diary {
 export interface DiaryCreate {
   title: string
   content: string
+  content_html?: string
   diary_date?: string
   emotion_tags?: EmotionTag[]
   importance_score?: number
@@ -30,6 +32,7 @@ export interface DiaryCreate {
 export interface DiaryUpdate {
   title?: string
   content?: string
+  content_html?: string
   diary_date?: string
   emotion_tags?: EmotionTag[]
   importance_score?: number

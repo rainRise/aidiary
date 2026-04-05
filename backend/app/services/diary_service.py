@@ -91,6 +91,7 @@ class DiaryService:
             user_id=user_id,
             title=diary_data.title,
             content=diary_data.content,
+            content_html=getattr(diary_data, 'content_html', None),
             diary_date=diary_data.diary_date or date.today(),
             emotion_tags=diary_data.emotion_tags,
             importance_score=diary_data.importance_score,

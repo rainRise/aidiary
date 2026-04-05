@@ -13,10 +13,21 @@ import type { SocialPost } from '@/types/analysis'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 function renderInline(text: string): ReactNode[] {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean)
+  // 匹配顺序：**bold** → ~~strikethrough~~ → __underline__ → `code` → *italic*
+  const regex = /(\*\*[^*]+\*\*|~~[^~]+~~|__[^_]+__|`[^`]+`|\*[^*]+\*)/g
+  const parts = text.split(regex).filter(Boolean)
   return parts.map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return <strong key={index}>{part.slice(2, -2)}</strong>
+    }
+    if (part.startsWith('~~') && part.endsWith('~~')) {
+      return <del key={index} className="text-stone-400">{part.slice(2, -2)}</del>
+    }
+    if (part.startsWith('__') && part.endsWith('__')) {
+      return <u key={index}>{part.slice(2, -2)}</u>
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return <code key={index} className="px-1 py-0.5 rounded bg-stone-100 text-[#b56f61] text-[0.85em] font-mono">{part.slice(1, -1)}</code>
     }
     if (part.startsWith('*') && part.endsWith('*')) {
       return <em key={index}>{part.slice(1, -1)}</em>
@@ -320,7 +331,14 @@ export default function DiaryDetail() {
           <div>
             <p className="text-xs font-medium text-stone-400 mb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> 日记内容</p>
             <div className="p-5 rounded-2xl bg-[#f5efea]/40 border border-[#e7dbd5]/50">
-              <MarkdownContent markdown={currentDiary.content} />
+              {currentDiary.content_html ? (
+                <div
+                  className="diary-html-content text-sm leading-7 text-stone-600"
+                  dangerouslySetInnerHTML={{ __html: currentDiary.content_html }}
+                />
+              ) : (
+                <MarkdownContent markdown={currentDiary.content} />
+              )}
             </div>
           </div>
 

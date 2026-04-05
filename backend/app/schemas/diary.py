@@ -10,6 +10,7 @@ class DiaryCreate(BaseModel):
     """创建日记请求"""
     title: Optional[str] = Field(None, max_length=200, description="日记标题")
     content: str = Field(..., min_length=1, max_length=10000, description="日记内容")
+    content_html: Optional[str] = Field(None, max_length=50000, description="日记HTML内容")
     diary_date: Optional[date] = Field(None, description="日记日期")
     emotion_tags: Optional[List[str]] = Field(None, description="情绪标签列表")
     importance_score: int = Field(default=5, ge=1, le=10, description="重要性评分（1-10）")
@@ -36,6 +37,7 @@ class DiaryUpdate(BaseModel):
     """更新日记请求"""
     title: Optional[str] = Field(None, max_length=200, description="日记标题")
     content: Optional[str] = Field(None, min_length=1, max_length=10000, description="日记内容")
+    content_html: Optional[str] = Field(None, max_length=50000, description="日记HTML内容")
     diary_date: Optional[date] = Field(None, description="日记日期")
     emotion_tags: Optional[List[str]] = Field(None, description="情绪标签列表")
     importance_score: Optional[int] = Field(None, ge=1, le=10, description="重要性评分（1-10）")

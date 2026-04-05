@@ -45,6 +45,7 @@ export default function DiaryEditor() {
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [contentHtml, setContentHtml] = useState('')
   const [diaryDate, setDiaryDate] = useState(new Date().toISOString().split('T')[0])
   const [emotionTags, setEmotionTags] = useState<string[]>([])
   const [importanceScore, setImportanceScore] = useState(5)
@@ -103,8 +104,9 @@ export default function DiaryEditor() {
     )
   }
 
-  const handleContentChange = useCallback((text: string, _html: string) => {
+  const handleContentChange = useCallback((text: string, html: string) => {
     setContent(text)
+    setContentHtml(html)
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,6 +120,7 @@ export default function DiaryEditor() {
         await updateDiary(Number(id), {
           title: title.trim(),
           content: content.trim(),
+          content_html: contentHtml || undefined,
           diary_date: diaryDate,
           emotion_tags: emotionTags.length > 0 ? emotionTags : [],
           importance_score: importanceScore,
@@ -128,6 +131,7 @@ export default function DiaryEditor() {
         const diary = await createDiary({
           title: title.trim(),
           content: content.trim(),
+          content_html: contentHtml || undefined,
           diary_date: diaryDate,
           emotion_tags: emotionTags.length > 0 ? emotionTags : undefined,
           importance_score: importanceScore,

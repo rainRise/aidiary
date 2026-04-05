@@ -145,6 +145,63 @@ input:focus, textarea:focus {
   background-clip: text;
 }
 
+/* 日记 HTML 内容渲染样式 */
+.diary-html-content p {
+  margin-bottom: 0.75rem;
+  line-height: 1.85;
+}
+.diary-html-content p:last-child {
+  margin-bottom: 0;
+}
+.diary-html-content strong, .diary-html-content b {
+  font-weight: 700;
+  color: hsl(22 18% 21%);
+}
+.diary-html-content em, .diary-html-content i {
+  font-style: italic;
+}
+.diary-html-content u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.diary-html-content s, .diary-html-content del {
+  text-decoration: line-through;
+  color: hsl(24 12% 58%);
+}
+.diary-html-content code {
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  background: hsl(30 15% 93%);
+  color: hsl(11 50% 50%);
+  font-size: 0.85em;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.diary-html-content h1 { font-size: 1.5rem; font-weight: 700; color: hsl(22 18% 21%); margin: 1rem 0 0.5rem; }
+.diary-html-content h2 { font-size: 1.25rem; font-weight: 700; color: hsl(22 18% 21%); margin: 0.85rem 0 0.4rem; }
+.diary-html-content h3 { font-size: 1.1rem; font-weight: 600; color: hsl(22 18% 21%); margin: 0.7rem 0 0.35rem; }
+.diary-html-content blockquote {
+  border-left: 4px solid hsl(11 60% 82%);
+  padding-left: 0.75rem;
+  color: hsl(24 12% 48%);
+  font-style: italic;
+  margin: 0.5rem 0;
+}
+.diary-html-content img {
+  max-width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  border-radius: 0.75rem;
+  border: 1px solid hsl(28 28% 88%);
+  margin: 0.5rem 0;
+}
+.diary-html-content ul, .diary-html-content ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+.diary-html-content li {
+  margin-bottom: 0.25rem;
+}
+
 /* 下拉菜单入场动画 */
 @keyframes fadeInDown {
   from { opacity: 0; transform: translateY(-6px); }
