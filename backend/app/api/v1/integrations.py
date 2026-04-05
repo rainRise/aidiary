@@ -7,7 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal, Optional
 from urllib.parse import parse_qs
 
@@ -31,12 +31,17 @@ external_bearer = HTTPBearer(auto_error=False)
 OPENCLAW_PROVIDER = "openclaw"
 
 
+# 令牌默认有效期（天）
+TOKEN_EXPIRE_DAYS = 30
+
+
 class IntegrationStatusResponse(BaseModel):
     provider: str
     connected: bool
     token_hint: Optional[str] = None
     created_at: Optional[str] = None
     last_used_at: Optional[str] = None
+    expires_at: Optional[str] = None
     ingest_url: str
     suggested_mode: str = "append_today"
 
@@ -126,6 +131,10 @@ async def _get_user_by_external_token(
     if not token_row:
         raise HTTPException(status_code=401, detail="外部接入令牌无效")
 
+    # 检查令牌是否过期
+    if token_row.expires_at and datetime.now(timezone.utc) > token_row.expires_at.replace(tzinfo=timezone.utc):
+        raise HTTPException(status_code=401, detail="外部接入令牌已过期，请在映记设置中重新生成")
+
     user_result = await db.execute(select(User).where(User.id == token_row.user_id))
     user = user_result.scalar_one_or_none()
     if not user or not user.is_active:
@@ -213,12 +222,19 @@ async def get_openclaw_status(
     db: AsyncSession = Depends(get_db),
 ):
     token_row = await _get_provider_token(db, current_user.id)
+    # 检查是否已过期
+    is_expired = (
+        token_row is not None
+        and token_row.expires_at
+        and datetime.now(timezone.utc) > token_row.expires_at.replace(tzinfo=timezone.utc)
+    )
     return IntegrationStatusResponse(
         provider=OPENCLAW_PROVIDER,
-        connected=token_row is not None,
+        connected=token_row is not None and not is_expired,
         token_hint=token_row.token_hint if token_row else None,
         created_at=_fmt_dt(token_row.created_at) if token_row else None,
         last_used_at=_fmt_dt(token_row.last_used_at) if token_row else None,
+        expires_at=_fmt_dt(token_row.expires_at) if token_row else None,
         ingest_url=_resolve_ingest_url(request),
     )
 
@@ -233,9 +249,12 @@ async def create_openclaw_token(
     raw_token, token_hint = _make_token()
     hashed = _hash_token(raw_token)
 
+    new_expires = datetime.now(timezone.utc) + timedelta(days=TOKEN_EXPIRE_DAYS)
     if token_row:
         token_row.token_hash = hashed
         token_row.token_hint = token_hint
+        token_row.expires_at = new_expires
+        token_row.is_active = True
         token_row.last_used_at = None
     else:
         token_row = ExternalIntegrationToken(
@@ -244,6 +263,7 @@ async def create_openclaw_token(
             token_hash=hashed,
             token_hint=token_hint,
             is_active=True,
+            expires_at=new_expires,
         )
         db.add(token_row)
 
@@ -257,6 +277,7 @@ async def create_openclaw_token(
         token_hint=token_row.token_hint,
         created_at=_fmt_dt(token_row.created_at),
         last_used_at=_fmt_dt(token_row.last_used_at),
+        expires_at=_fmt_dt(token_row.expires_at),
         ingest_url=_resolve_ingest_url(request),
     )
 
@@ -295,6 +316,8 @@ async def ingest_openclaw_diary(
         if existing:
             append_text = (payload.content or "").strip()
             existing.content = f"{existing.content.rstrip()}\n\n{append_text}".strip()
+            # 清除旧的 content_html，让前端回退到渲染 content（Markdown）
+            existing.content_html = None
             if not (existing.title or "").strip():
                 existing.title = payload.title or _infer_title(append_text, target_date)
             existing.word_count = len(existing.content)

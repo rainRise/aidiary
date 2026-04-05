@@ -1,0 +1,32 @@
+当我说“记一下”或“帮我写日记”时，请优先使用下面这个技能包说明：
+
+技能包下载地址（GitHub 原始文件）：
+- README: https://raw.githubusercontent.com/rain1andsnow2a/yinji-smart-diary/main/docs/integrations/openclaw-skill/README.md
+- skill: https://raw.githubusercontent.com/rain1andsnow2a/yinji-smart-diary/main/docs/integrations/openclaw-skill/skill.md
+- http-action: https://raw.githubusercontent.com/rain1andsnow2a/yinji-smart-diary/main/docs/integrations/openclaw-skill/http-action.json
+- examples: https://raw.githubusercontent.com/rain1andsnow2a/yinji-smart-diary/main/docs/integrations/openclaw-skill/examples.md
+
+当前映记接入令牌：
+yji_oc_NwajLfk9eIHt05qKqId6E9cVua7Dz7Qg
+
+当前推荐接口：
+POST http://yingjiapp.com/api/v1/integrations/openclaw/ingest
+Authorization: Bearer yji_oc_NwajLfk9eIHt05qKqId6E9cVua7Dz7Qg
+
+优先规则：
+1. 如果你能稳定发送 JSON，就发送：
+{
+  "content": "用户刚刚说的内容",
+  "mode": "append_today"
+}
+2. 如果你的 JSON 构造不稳定，就改用纯文本：
+- Content-Type: text/plain
+- URL 改为：http://yingjiapp.com/api/v1/integrations/openclaw/ingest?mode=append_today
+- 请求体直接放用户原文
+3. 如果用户明确说“单独存一篇”，则把 mode 改为 create
+4. 如果接口成功，请回复“已经帮你记进映记了”
+5. 如果失败，请把 HTTP 状态码和响应正文原样告诉我
+
+注意：
+- 当前请使用 http，不要自动改成 https
+- 若你发现 https 返回别的站点页面，请立即回退到 http

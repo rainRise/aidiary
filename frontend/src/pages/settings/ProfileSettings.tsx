@@ -472,20 +472,27 @@ export default function ProfileSettings() {
             </div>
 
             <div className="grid gap-4">
-              <div className="grid sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
                   <p className="text-[11px] text-stone-400 mb-1">当前状态</p>
                   <p className={`text-sm font-semibold ${openClawStatus?.connected ? 'text-emerald-500' : 'text-stone-500'}`}>
-                    {openClawStatus?.connected ? '已生成令牌' : '尚未生成令牌'}
+                    {openClawStatus?.connected ? '已连接' : '未连接'}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
                   <p className="text-[11px] text-stone-400 mb-1">令牌指纹</p>
-                  <p className="text-sm font-semibold text-stone-600">{openClawStatus?.token_hint || '尚未生成'}</p>
+                  <p className="text-sm font-semibold text-stone-600">{openClawStatus?.token_hint || '—'}</p>
+                </div>
+                <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
+                  <p className="text-[11px] text-stone-400 mb-1">有效期至</p>
+                  <p className={`text-sm font-semibold ${openClawStatus?.expires_at && new Date(openClawStatus.expires_at) < new Date() ? 'text-rose-500' : 'text-stone-600'}`}>
+                    {openClawStatus?.expires_at ? new Date(openClawStatus.expires_at).toLocaleDateString('zh-CN') : '—'}
+                    {openClawStatus?.expires_at && new Date(openClawStatus.expires_at) < new Date() ? ' (已过期)' : ''}
+                  </p>
                 </div>
                 <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
                   <p className="text-[11px] text-stone-400 mb-1">最近写入</p>
-                  <p className="text-sm font-semibold text-stone-600">{openClawStatus?.last_used_at ? new Date(openClawStatus.last_used_at).toLocaleString('zh-CN') : '还没有使用'}</p>
+                  <p className="text-sm font-semibold text-stone-600">{openClawStatus?.last_used_at ? new Date(openClawStatus.last_used_at).toLocaleString('zh-CN') : '—'}</p>
                 </div>
               </div>
 
