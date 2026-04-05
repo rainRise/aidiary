@@ -484,10 +484,13 @@ export default function ProfileSettings() {
                   <p className="text-sm font-semibold text-stone-600">{openClawStatus?.token_hint || '—'}</p>
                 </div>
                 <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
-                  <p className="text-[11px] text-stone-400 mb-1">有效期至</p>
+                  <p className="text-[11px] text-stone-400 mb-1">有效期</p>
                   <p className={`text-sm font-semibold ${openClawStatus?.expires_at && new Date(openClawStatus.expires_at) < new Date() ? 'text-rose-500' : 'text-stone-600'}`}>
-                    {openClawStatus?.expires_at ? new Date(openClawStatus.expires_at).toLocaleDateString('zh-CN') : '—'}
-                    {openClawStatus?.expires_at && new Date(openClawStatus.expires_at) < new Date() ? ' (已过期)' : ''}
+                    {openClawStatus?.connected
+                      ? (openClawStatus?.expires_at
+                          ? (new Date(openClawStatus.expires_at) < new Date() ? new Date(openClawStatus.expires_at).toLocaleDateString('zh-CN') + ' (已过期)' : new Date(openClawStatus.expires_at).toLocaleDateString('zh-CN'))
+                          : '永久有效')
+                      : '—'}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">

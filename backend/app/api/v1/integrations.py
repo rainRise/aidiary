@@ -31,10 +31,6 @@ external_bearer = HTTPBearer(auto_error=False)
 OPENCLAW_PROVIDER = "openclaw"
 
 
-# 令牌默认有效期（天）
-TOKEN_EXPIRE_DAYS = 30
-
-
 class IntegrationStatusResponse(BaseModel):
     provider: str
     connected: bool
@@ -43,7 +39,7 @@ class IntegrationStatusResponse(BaseModel):
     last_used_at: Optional[str] = None
     expires_at: Optional[str] = None
     ingest_url: str
-    suggested_mode: str = "append_today"
+    suggested_mode: str = "create"
 
 
 class IntegrationTokenCreateResponse(IntegrationStatusResponse):
@@ -57,7 +53,7 @@ class ExternalDiaryIngestRequest(BaseModel):
     emotion_tags: Optional[list[str]] = Field(default=None, description="可选情绪标签")
     importance_score: int = Field(default=5, ge=1, le=10, description="重要性评分")
     images: Optional[list[str]] = Field(default=None, description="图片地址")
-    mode: Literal["create", "append_today"] = Field(default="append_today", description="创建模式")
+    mode: Literal["create", "append_today"] = Field(default="create", description="创建模式：create=新建日记, append_today=追加到今天已有日记")
 
 
 class ExternalDiaryIngestResponse(BaseModel):
@@ -131,7 +127,7 @@ async def _get_user_by_external_token(
     if not token_row:
         raise HTTPException(status_code=401, detail="外部接入令牌无效")
 
-    # 检查令牌是否过期
+    # 检查令牌是否过期（expires_at 为空表示永久有效）
     if token_row.expires_at and datetime.now(timezone.utc) > token_row.expires_at.replace(tzinfo=timezone.utc):
         raise HTTPException(status_code=401, detail="外部接入令牌已过期，请在映记设置中重新生成")
 
@@ -249,11 +245,10 @@ async def create_openclaw_token(
     raw_token, token_hint = _make_token()
     hashed = _hash_token(raw_token)
 
-    new_expires = datetime.now(timezone.utc) + timedelta(days=TOKEN_EXPIRE_DAYS)
     if token_row:
         token_row.token_hash = hashed
         token_row.token_hint = token_hint
-        token_row.expires_at = new_expires
+        token_row.expires_at = None  # 永久有效
         token_row.is_active = True
         token_row.last_used_at = None
     else:
@@ -263,7 +258,7 @@ async def create_openclaw_token(
             token_hash=hashed,
             token_hint=token_hint,
             is_active=True,
-            expires_at=new_expires,
+            expires_at=None,
         )
         db.add(token_row)
 
