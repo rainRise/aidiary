@@ -132,7 +132,10 @@ function FloatingToolbarPlugin() {
   const [editor] = useLexicalComposerContext()
   const toolbarRef = useRef<HTMLDivElement>(null)
   const [show, setShow] = useState(false)
-  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const [anchorPos, setAnchorPos] = useState({ top: 0, left: 0 })
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const isDragging = useRef(false)
+  const dragStart = useRef({ x: 0, y: 0, ox: 0, oy: 0 })
   const [formats, setFormats] = useState({
     bold: false, italic: false, underline: false, strikethrough: false, code: false,
   })
@@ -162,10 +165,12 @@ function FloatingToolbarPlugin() {
       const rect = range.getBoundingClientRect()
       if (rect.width === 0) { setShow(false); return }
 
-      setPos({
-        top: rect.top + window.scrollY - 52,
+      // 显示在选区正下方 8px
+      setAnchorPos({
+        top: rect.bottom + window.scrollY + 8,
         left: rect.left + window.scrollX + rect.width / 2,
       })
+      setDragOffset({ x: 0, y: 0 })
       setShow(true)
     })
   }, [editor])
@@ -179,6 +184,30 @@ function FloatingToolbarPlugin() {
     )
     return () => { unsub1(); unsub2() }
   }, [editor, updateToolbar])
+
+  // ---- 拖拽逻辑 ----
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    isDragging.current = true
+    dragStart.current = { x: e.clientX, y: e.clientY, ox: dragOffset.x, oy: dragOffset.y }
+    e.preventDefault()
+  }, [dragOffset])
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return
+      setDragOffset({
+        x: dragStart.current.ox + (e.clientX - dragStart.current.x),
+        y: dragStart.current.oy + (e.clientY - dragStart.current.y),
+      })
+    }
+    const handleMouseUp = () => { isDragging.current = false }
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [])
 
   // 鼠标离开工具栏时延迟隐藏（给面板留时间）
   const handleMouseLeave = () => {
@@ -233,10 +262,27 @@ function FloatingToolbarPlugin() {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       className="fixed z-[9999]"
-      style={{ top: pos.top, left: pos.left, transform: 'translateX(-50%)' }}
+      style={{
+        top: anchorPos.top + dragOffset.y,
+        left: anchorPos.left + dragOffset.x,
+        transform: 'translateX(-50%)',
+      }}
     >
       {/* 主工具栏 */}
       <div className="flex items-center gap-0.5 px-1.5 py-1 rounded-xl bg-stone-800/95 backdrop-blur-sm shadow-xl border border-stone-700/50">
+        {/* 拖拽手柄 */}
+        <div
+          onMouseDown={handleDragStart}
+          className="w-6 h-8 flex items-center justify-center cursor-grab active:cursor-grabbing text-stone-500 hover:text-stone-300 shrink-0"
+          title="拖拽移动"
+        >
+          <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
+            <circle cx="3" cy="2" r="1.2"/><circle cx="7" cy="2" r="1.2"/>
+            <circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/>
+            <circle cx="3" cy="12" r="1.2"/><circle cx="7" cy="12" r="1.2"/>
+          </svg>
+        </div>
+        <div className="w-px h-5 bg-stone-600 mx-0.5" />
         {/* 字号 */}
         <div className="relative">
           <button

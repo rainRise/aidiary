@@ -318,26 +318,42 @@ async def chat_stream(
     history_rows = list(history_result.scalars().all())[::-1]
     history_text = "\n".join([f"{r.role}: {r.content[:200]}" for r in history_rows])
 
-    rag_text = "\n".join(
-        [
-            f"- {it.get('diary_date')} | {it.get('title') or '无标题'} | {it.get('snippet') or ''}"
-            for it in rag_hits
-        ]
-    ) or "暂无检索到的相关日记片段。"
+    # 构建日记链接映射 — 供AI在回复中引用
+    diary_links_map: list[dict] = []
+    rag_lines: list[str] = []
+    for it in rag_hits:
+        did = it.get("diary_id")
+        title = it.get("title") or "无标题"
+        diary_date = it.get("diary_date") or ""
+        snippet = it.get("snippet") or ""
+        if did:
+            diary_links_map.append({"diary_id": did, "title": title, "date": diary_date})
+            rag_lines.append(
+                f"- [{diary_date} {title}]（日记ID={did}） 片段：{snippet}"
+            )
+        else:
+            rag_lines.append(f"- {diary_date} | {title} | {snippet}")
+    rag_text = "\n".join(rag_lines) or "暂无检索到的相关日记片段。"
 
     system_prompt = (
         "你是映记精灵，是一只温暖、不评判、有洞察力的小狐狸伙伴。"
         "你擅长用轻柔、具体的方式陪伴用户，避免说教。"
         "如果用户表达明显的痛苦情绪，先共情再给一个可执行的小步骤。"
-        "回答使用简体中文，语气自然真诚，不要过度营销化。"
+        "回答使用简体中文，语气自然真诚，不要过度营销化。\n\n"
+        "【日记查找能力】\n"
+        "你可以根据用户的需求智能查找他写过的日记。系统已经帮你检索了相关的日记片段。"
+        "当你引用某篇日记时，请使用这个格式：[[diary:日记ID|显示文字]]，例如 [[diary:42|那天关于旅行的日记]]。"
+        "这样用户就可以直接点击链接跳转到那篇日记。"
+        "如果用户问'我写过关于XXX的日记吗'之类的问题，请基于检索结果回答，并附上日记链接。"
+        "如果检索结果里没有相关的日记，就诚实地说没有找到。"
     )
     user_prompt = (
         f"用户昵称：{nickname}\n"
         f"用户MBTI：{current_user.mbti or '未知'}\n"
         f"最近对话：\n{history_text or '无'}\n\n"
-        f"检索到的相关日记片段：\n{rag_text}\n\n"
+        f"检索到的用户相关日记片段：\n{rag_text}\n\n"
         f"用户当前问题：{message}\n\n"
-        "请直接回复用户，不要输出JSON。"
+        "请直接回复用户，不要输出JSON。如果要引用日记请用 [[diary:ID|标题]] 格式。"
     )
 
     async def event_gen() -> AsyncGenerator[str, None]:
@@ -379,6 +395,7 @@ async def chat_stream(
                     "session_id": session_id,
                     "assistant_message_id": ai_msg.id,
                     "rag_hits": rag_hits,
+                    "diary_links": diary_links_map,
                 },
             )
         except Exception as e:

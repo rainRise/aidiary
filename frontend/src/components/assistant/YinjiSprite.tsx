@@ -1,8 +1,39 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { X, Send, MessageCircle, PlusCircle, History, Trash2 } from 'lucide-react'
 import { assistantService, type AssistantMessage, type AssistantSession } from '@/services/assistant.service'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/components/ui/toast'
+
+// 解析 [[diary:ID|显示文字]] 为可点击链接
+function renderMessageContent(text: string, onDiaryClick: (id: number) => void) {
+  if (!text) return null
+  const parts: (string | JSX.Element)[] = []
+  const regex = /\[\[diary:(\d+)\|([^\]]+)\]\]/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index))
+    }
+    const diaryId = parseInt(match[1], 10)
+    const label = match[2]
+    parts.push(
+      <button
+        key={`diary-${diaryId}-${match.index}`}
+        onClick={(e) => { e.stopPropagation(); onDiaryClick(diaryId) }}
+        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg text-[#b56f61] bg-[#faf0ec] hover:bg-[#f3e4de] border border-[#e8d5cc] transition-colors text-xs font-medium"
+      >
+        📖 {label}
+      </button>
+    )
+    lastIndex = regex.lastIndex
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex))
+  }
+  return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : <>{parts}</>
+}
 
 type Pos = { x: number; y: number }
 
@@ -19,6 +50,7 @@ function defaultPos() {
 
 export default function YinjiSprite() {
   const { isAuthenticated } = useAuthStore()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [muted, setMuted] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
@@ -506,7 +538,9 @@ export default function YinjiSprite() {
                     }`}
                     style={m.role === 'user' ? { background: 'linear-gradient(135deg,#df8f7b,#a19ab8)' } : undefined}
                   >
-                    {m.content || (responding && m.role === 'assistant' ? '...' : '')}
+                    {m.role === 'assistant' && m.content
+                      ? renderMessageContent(m.content, (id) => { setOpen(false); navigate(`/diaries/${id}`) })
+                      : m.content || (responding && m.role === 'assistant' ? '...' : '')}
                   </div>
                 </div>
               ))
