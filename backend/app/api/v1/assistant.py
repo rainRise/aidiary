@@ -83,17 +83,19 @@ def _safe_json_sse(event: str, data: dict) -> str:
 
 
 async def _build_rag_context(db: AsyncSession, user: User, query: str) -> list[dict]:
-    # 优先 Qdrant 语义检索
-    qdrant_hits = await qdrant_diary_memory_service.retrieve_context(
-        db=db,
-        user_id=user.id,
-        query=query,
-        top_k=4,
-    )
-    if qdrant_hits:
-        return qdrant_hits
+    top_k = 5
 
-    # 回退：本地轻量 RAG
+    # 1) Qdrant 语义检索（可能失败/未配置，不阻塞）
+    qdrant_hits: list[dict] = []
+    try:
+        qdrant_hits = await qdrant_diary_memory_service.retrieve_context(
+            db=db, user_id=user.id, query=query, top_k=top_k,
+        )
+    except Exception:
+        pass
+
+    # 2) 始终执行本地 BM25 检索（关键词匹配，覆盖 Qdrant 遗漏）
+    bm25_hits: list[dict] = []
     diaries_result = await db.execute(
         select(Diary)
         .where(Diary.user_id == user.id)
@@ -101,22 +103,33 @@ async def _build_rag_context(db: AsyncSession, user: User, query: str) -> list[d
         .limit(80)
     )
     diaries = list(diaries_result.scalars().all())
-    if not diaries:
-        return []
-    raw_docs = [
-        {
-            "id": d.id,
-            "diary_date": str(d.diary_date),
-            "title": d.title or "无标题",
-            "content": d.content or "",
-            "emotion_tags": d.emotion_tags or [],
-            "importance_score": int(d.importance_score or 5),
-        }
-        for d in diaries
-    ]
-    chunks = diary_rag_service.build_chunks(raw_docs)
-    hits = diary_rag_service.retrieve(chunks, query, top_k=4)
-    return hits
+    if diaries:
+        raw_docs = [
+            {
+                "id": d.id,
+                "diary_date": str(d.diary_date),
+                "title": d.title or "无标题",
+                "content": d.content or "",
+                "emotion_tags": d.emotion_tags or [],
+                "importance_score": int(d.importance_score or 5),
+            }
+            for d in diaries
+        ]
+        chunks = diary_rag_service.build_chunks(raw_docs)
+        bm25_hits = diary_rag_service.retrieve(chunks, query, top_k=top_k)
+
+    # 3) 合并去重：以 diary_id 为键，保留分数更高的那条
+    merged: dict[int, dict] = {}
+    for hit in qdrant_hits + bm25_hits:
+        did = hit.get("diary_id")
+        if did is None:
+            continue
+        existing = merged.get(did)
+        if existing is None or (hit.get("score") or 0) > (existing.get("score") or 0):
+            merged[did] = hit
+    # 按 score 降序排列，取 top_k
+    results = sorted(merged.values(), key=lambda x: x.get("score") or 0, reverse=True)[:top_k]
+    return results
 
 
 @router.get("/profile", response_model=AssistantProfileResponse, summary="获取精灵配置")
