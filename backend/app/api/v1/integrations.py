@@ -5,11 +5,13 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import secrets
 from datetime import date, datetime
 from typing import Literal, Optional
+from urllib.parse import parse_qs
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, select
@@ -143,6 +145,67 @@ async def _resolve_external_token(
     raise HTTPException(status_code=401, detail="缺少外部接入令牌")
 
 
+async def _parse_ingest_payload(
+    request: Request,
+    mode_query: Optional[str] = None,
+) -> ExternalDiaryIngestRequest:
+    """
+    尽量兼容外部代理的多种发送方式：
+    1. application/json
+    2. text/plain（整段正文）
+    3. x-www-form-urlencoded
+    4. query string fallback
+    """
+    body_bytes = await request.body()
+    raw_text = body_bytes.decode("utf-8", errors="ignore").strip()
+    content_type = (request.headers.get("content-type") or "").lower()
+    payload: dict = {}
+
+    if raw_text:
+        if "application/json" in content_type:
+            try:
+                payload = json.loads(raw_text)
+            except Exception:
+                # 有些代理会传近似 JSON 或未转义正文，继续回退
+                payload = {}
+        if not payload and ("application/x-www-form-urlencoded" in content_type or "=" in raw_text):
+            try:
+                parsed = parse_qs(raw_text, keep_blank_values=True)
+                payload = {k: (v[-1] if isinstance(v, list) and v else v) for k, v in parsed.items()}
+            except Exception:
+                payload = {}
+        if not payload:
+            payload = {"content": raw_text}
+
+    # query 参数兜底
+    query_content = request.query_params.get("content")
+    query_title = request.query_params.get("title")
+    query_mode = request.query_params.get("mode") or mode_query
+    query_date = request.query_params.get("diary_date")
+
+    if query_content and not payload.get("content"):
+        payload["content"] = query_content
+    if query_title and not payload.get("title"):
+        payload["title"] = query_title
+    if query_mode and not payload.get("mode"):
+        payload["mode"] = query_mode
+    if query_date and not payload.get("diary_date"):
+        payload["diary_date"] = query_date
+
+    if isinstance(payload.get("emotion_tags"), str):
+        payload["emotion_tags"] = [t.strip() for t in payload["emotion_tags"].split(",") if t.strip()]
+    if isinstance(payload.get("images"), str):
+        payload["images"] = [t.strip() for t in payload["images"].split(",") if t.strip()]
+
+    if not payload.get("content"):
+        raise HTTPException(status_code=400, detail="缺少日记内容 content")
+
+    try:
+        return ExternalDiaryIngestRequest.model_validate(payload)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"外部接入参数格式不正确：{exc}") from exc
+
+
 @router.get("/openclaw/status", response_model=IntegrationStatusResponse, summary="查看 OpenClaw 接入状态")
 async def get_openclaw_status(
     request: Request,
@@ -212,10 +275,12 @@ async def revoke_openclaw_token(
 
 @router.post("/openclaw/ingest", response_model=ExternalDiaryIngestResponse, summary="通过 OpenClaw 写入日记")
 async def ingest_openclaw_diary(
-    payload: ExternalDiaryIngestRequest,
+    request: Request,
     raw_token: str = Depends(_resolve_external_token),
+    mode: Optional[str] = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
+    payload = await _parse_ingest_payload(request, mode_query=mode)
     user, token_row = await _get_user_by_external_token(db, raw_token)
     target_date = payload.diary_date or date.today()
 

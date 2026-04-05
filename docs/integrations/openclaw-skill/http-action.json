@@ -1,0 +1,14 @@
+{
+  "name": "映记日记速记",
+  "description": "把用户输入写入映记日记",
+  "method": "POST",
+  "url": "http://yingjiapp.com/api/v1/integrations/openclaw/ingest",
+  "headers": {
+    "Authorization": "Bearer {{YINJI_TOKEN}}",
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "content": "{{USER_INPUT}}",
+    "mode": "append_today"
+  }
+}
