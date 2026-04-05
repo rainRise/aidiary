@@ -274,6 +274,23 @@ async def clear_session_messages(
     return {"ok": True}
 
 
+def _needs_diary_search(message: str) -> bool:
+    """判断用户消息是否包含日记查找意图"""
+    msg = (message or "").lower()
+    # 明确的查找/回忆日记的关键词
+    search_keywords = [
+        "找", "查", "搜", "检索", "翻",
+        "写过", "记过", "提到过", "说过", "聊过",
+        "哪篇", "哪天", "什么时候写",
+        "有没有写", "有没有记", "有关于",
+        "之前的日记", "以前的日记", "上次写",
+        "帮我找", "帮我查", "帮我搜",
+        "回忆", "回顾", "翻翻日记",
+        "日记里", "日记中",
+    ]
+    return any(kw in msg for kw in search_keywords)
+
+
 @router.post("/chat/stream", summary="流式对话")
 async def chat_stream(
     payload: ChatStreamRequest,
@@ -307,7 +324,11 @@ async def chat_stream(
 
     profile = await _get_or_create_profile(db, current_user.id)
     nickname = (profile.nickname or current_user.username or "你").strip()
-    rag_hits = await _build_rag_context(db, current_user, message)
+
+    # 仅当用户明确要求查找日记时才触发 RAG 检索
+    rag_hits: list[dict] = []
+    if _needs_diary_search(message):
+        rag_hits = await _build_rag_context(db, current_user, message)
 
     history_result = await db.execute(
         select(AssistantMessage)
@@ -339,22 +360,32 @@ async def chat_stream(
         "你是映记精灵，是一只温暖、不评判、有洞察力的小狐狸伙伴。"
         "你擅长用轻柔、具体的方式陪伴用户，避免说教。"
         "如果用户表达明显的痛苦情绪，先共情再给一个可执行的小步骤。"
-        "回答使用简体中文，语气自然真诚，不要过度营销化。\n\n"
-        "【日记查找能力】\n"
-        "你可以根据用户的需求智能查找他写过的日记。系统已经帮你检索了相关的日记片段。"
-        "当你引用某篇日记时，请使用这个格式：[[diary:日记ID|显示文字]]，例如 [[diary:42|那天关于旅行的日记]]。"
-        "这样用户就可以直接点击链接跳转到那篇日记。"
-        "如果用户问'我写过关于XXX的日记吗'之类的问题，请基于检索结果回答，并附上日记链接。"
-        "如果检索结果里没有相关的日记，就诚实地说没有找到。"
+        "回答使用简体中文，语气自然真诚，不要过度营销化。"
     )
+    # 仅在触发日记查找时追加日记相关指令
+    if rag_hits:
+        system_prompt += (
+            "\n\n【日记查找能力】\n"
+            "系统已经帮你检索了用户相关的日记片段。"
+            "当你引用某篇日记时，请使用这个格式：[[diary:日记ID|显示文字]]，例如 [[diary:42|那天关于旅行的日记]]。"
+            "这样用户就可以直接点击链接跳转到那篇日记。"
+            "请基于检索结果回答用户的查找请求，并附上日记链接。"
+            "如果检索结果里没有相关的日记，就诚实地说没有找到。"
+        )
+
     user_prompt = (
         f"用户昵称：{nickname}\n"
         f"用户MBTI：{current_user.mbti or '未知'}\n"
         f"最近对话：\n{history_text or '无'}\n\n"
-        f"检索到的用户相关日记片段：\n{rag_text}\n\n"
-        f"用户当前问题：{message}\n\n"
-        "请直接回复用户，不要输出JSON。如果要引用日记请用 [[diary:ID|标题]] 格式。"
     )
+    if rag_hits:
+        user_prompt += f"检索到的用户相关日记片段：\n{rag_text}\n\n"
+    user_prompt += (
+        f"用户当前问题：{message}\n\n"
+        "请直接回复用户，不要输出JSON。"
+    )
+    if rag_hits:
+        user_prompt += "如果要引用日记请用 [[diary:ID|标题]] 格式。"
 
     async def event_gen() -> AsyncGenerator[str, None]:
         yield _safe_json_sse("meta", {"session_id": session_id, "user_message_id": user_msg.id})

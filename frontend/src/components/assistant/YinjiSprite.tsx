@@ -400,29 +400,36 @@ export default function YinjiSprite() {
       >
         {muted ? (
           <span className="text-stone-600 text-xs font-semibold">AI</span>
-        ) : responding ? (
-          <video
-            src="/Video 1.webm"
-            autoPlay
-            loop
-            muted
-            playsInline
-            draggable={false}
-            onDragStart={(e) => e.preventDefault()}
-            className="w-full h-full object-contain pointer-events-none drop-shadow-[0_8px_18px_rgba(95,84,128,0.32)]"
-            onError={(e) => {
-              const v = e.currentTarget
-              if (v.src.endsWith('.webm')) v.src = '/Video 1.mp4'
-            }}
-          />
         ) : (
-          <img
-            src="/Image 1.png"
-            alt="映记精灵"
-            draggable={false}
-            onDragStart={(e) => e.preventDefault()}
-            className="w-full h-full object-contain bg-transparent pointer-events-none drop-shadow-[0_8px_18px_rgba(95,84,128,0.28)]"
-          />
+          <>
+            {/* 始终渲染静态图和视频，通过 opacity 切换避免闪烁 */}
+            <img
+              src="/Image 1.png"
+              alt="映记精灵"
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+              className={`absolute inset-0 w-full h-full object-contain bg-transparent pointer-events-none drop-shadow-[0_8px_18px_rgba(95,84,128,0.28)] transition-opacity duration-200 ${
+                responding ? 'opacity-0' : 'opacity-100'
+              }`}
+            />
+            <video
+              src="/Video 1.webm"
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+              className={`absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-[0_8px_18px_rgba(95,84,128,0.32)] transition-opacity duration-200 ${
+                responding ? 'opacity-100' : 'opacity-0'
+              }`}
+              onError={(e) => {
+                const v = e.currentTarget
+                if (v.src.endsWith('.webm')) v.src = '/Video 1.mp4'
+              }}
+            />
+          </>
         )}
       </button>
 
