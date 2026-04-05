@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { useDiaryStore } from '@/store/diaryStore'
 import EmotionChart from '@/components/common/EmotionChart'
-import { PenLine, BookOpen, Settings, LogOut, Sprout, BookMarked, Moon, Heart, Clock, MessageCircle, FileText, Orbit } from 'lucide-react'
+import { PenLine, BookOpen, Settings, LogOut, Sprout, BookMarked, Moon, Heart, Clock, MessageCircle, FileText, Orbit, Sparkles } from 'lucide-react'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -232,12 +232,13 @@ export default function Dashboard() {
         </div>
 
         {/* 快速操作 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
             { icon: <PenLine className="w-6 h-6 text-[#b56f61]" />, title: '写日记', desc: '记录今天', bg: 'hover:bg-[#f5efea] hover:border-[#d8c7bc]', action: () => navigate('/diaries/new') },
             { icon: <BookOpen className="w-6 h-6 text-violet-400" />, title: '日记本', desc: '浏览记录', bg: 'hover:bg-violet-50 hover:border-violet-200', action: () => navigate('/diaries') },
             { icon: <Clock className="w-6 h-6 text-emerald-400" />, title: '成长中心', desc: '查看成长洞察', bg: 'hover:bg-emerald-50 hover:border-emerald-200', action: () => navigate('/growth') },
             { icon: <Orbit className="w-6 h-6 text-rose-400" />, title: '情绪星图', desc: '聚类可视化', bg: 'hover:bg-rose-50 hover:border-rose-200', action: () => navigate('/emotion') },
+            { icon: <Sparkles className="w-6 h-6 text-amber-400" />, title: '综合分析', desc: '长期洞察', bg: 'hover:bg-amber-50 hover:border-amber-200', action: () => navigate('/analysis') },
           ].map((item) => (
             <button
               key={item.title}
