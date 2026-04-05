@@ -298,20 +298,29 @@ class EmotionFeatureExtractor:
         if not path.exists():
             return []
         words: list[str] = []
-        try:
-            with path.open("r", encoding="utf-8") as f:
-                for raw in f:
-                    line = raw.strip()
-                    if not line:
-                        continue
-                    if line.startswith("#"):
-                        continue
-                    # 兼容 "词\t分数" / "词 分数" / "词"
-                    token = re.split(r"[\t\s,]+", line)[0].strip()
-                    if token:
-                        words.append(token)
-        except Exception as e:
-            logger.warning("[EmotionFeature] 读取词典失败: %s err=%s", path, e)
+        read_ok = False
+        last_err: Exception | None = None
+        for enc in ("utf-8", "utf-8-sig", "utf-16", "gbk", "gb18030"):
+            try:
+                with path.open("r", encoding=enc) as f:
+                    for raw in f:
+                        line = raw.strip()
+                        if not line:
+                            continue
+                        if line.startswith("#"):
+                            continue
+                        # 兼容 "词\t分数" / "词 分数" / "词"
+                        token = re.split(r"[\t\s,，,]+", line)[0].strip()
+                        if token:
+                            words.append(token)
+                read_ok = True
+                break
+            except Exception as e:
+                last_err = e
+                words = []
+                continue
+        if not read_ok:
+            logger.warning("[EmotionFeature] 读取词典失败: %s err=%s", path, last_err)
             return []
         # 去重并保持顺序
         seen = set()
