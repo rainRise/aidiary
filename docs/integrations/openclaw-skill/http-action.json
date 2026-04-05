@@ -9,6 +9,12 @@
   },
   "body": {
     "content": "{{USER_INPUT}}",
+    "title": "{{USER_TITLE}}",
+    "diary_date": "{{USER_DIARY_DATE_YYYY_MM_DD}}",
+    "emotion_tags": [
+      "{{USER_EMOTION_TAG_1}}"
+    ],
+    "importance_score": 5,
     "mode": "append_today"
   }
 }

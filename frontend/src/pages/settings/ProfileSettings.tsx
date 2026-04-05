@@ -195,8 +195,16 @@ export default function ProfileSettings() {
     }
   }
 
+  const openClawSkillRepo = 'https://github.com/rain1andsnow2a/yinji-openclaw-skill'
+  const openClawSkillRaw = 'https://raw.githubusercontent.com/rain1andsnow2a/yinji-openclaw-skill/main/skill.md'
   const openClawSnippet = openClawStatus ? [
-    '当我说“记一下”或“帮我写日记”时，请调用这个接口把内容写入映记：',
+    '你是映记的日记速记助手。优先执行以下流程：',
+    '',
+    '第 1 步（推荐）先下载并加载官方 skill：',
+    `Skill 仓库：${openClawSkillRepo}`,
+    `Skill 直链：${openClawSkillRaw}`,
+    '',
+    '第 2 步（回退）若平台暂不支持 skill 下载，则改用 HTTP 直连：',
     `POST ${openClawStatus.ingest_url}`,
     plainToken || openClawStatus.token_hint
       ? `Authorization: Bearer ${plainToken || '请填入你刚生成的令牌'}`
@@ -205,10 +213,14 @@ export default function ProfileSettings() {
     '',
     '{',
     '  "content": "用户刚刚说的内容",',
+    '  "title": "可选标题",',
+    '  "diary_date": "YYYY-MM-DD",',
+    '  "emotion_tags": ["开心"],',
+    '  "importance_score": 6,',
     '  "mode": "append_today"',
     '}',
     '',
-    '如果用户明确说“单独存一篇”，就把 mode 改为 create。',
+    '如果用户明确说“单独存一篇/新开一篇”，把 mode 改为 create。',
   ].join('\n') : ''
 
   const SectionCard = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
@@ -511,6 +523,15 @@ export default function ProfileSettings() {
                   </button>
                 )}
 
+                <button
+                  type="button"
+                  onClick={() => copyText(openClawSkillRepo, 'OpenClaw Skill 仓库地址已复制')}
+                  className="h-10 px-4 rounded-xl text-xs font-semibold border border-violet-200 bg-white text-violet-600 hover:bg-violet-50 transition-all inline-flex items-center gap-2"
+                >
+                  <Link2 className="w-3.5 h-3.5" />
+                  复制 Skill 地址
+                </button>
+
                 {openClawStatus?.connected && (
                   <button
                     type="button"
@@ -550,7 +571,7 @@ export default function ProfileSettings() {
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <p className="text-sm font-semibold text-stone-700">推荐给 OpenClaw 的技能提示词</p>
-                    <p className="text-xs text-stone-400 mt-1">可以直接复制给小龙虾的工作流或技能配置</p>
+                    <p className="text-xs text-stone-400 mt-1">默认先让小龙虾下载公开 skill，失败再回退到 HTTP 直连</p>
                   </div>
                   {openClawSnippet && (
                     <button
