@@ -552,6 +552,7 @@ const theme = {
     bold: 'font-bold',
     italic: 'italic',
     underline: 'underline',
+    strikethrough: 'line-through',
   },
   paragraph: 'mb-1',
   heading: {
