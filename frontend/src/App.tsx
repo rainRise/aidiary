@@ -27,6 +27,7 @@ const CreatePostPage = lazy(() => import('@/pages/community/CreatePostPage'))
 const PostDetailPage = lazy(() => import('@/pages/community/PostDetailPage'))
 const CollectionsPage = lazy(() => import('@/pages/community/CollectionsPage'))
 const HistoryPage = lazy(() => import('@/pages/community/HistoryPage'))
+const EmotionMap = lazy(() => import('@/pages/emotion/EmotionMap'))
 
 // 私有路由组件
 function PrivateRoute({ children }: { children: React.ReactElement }) {
@@ -182,6 +183,16 @@ function App() {
             element={
               <PrivateRoute>
                 <ProfileSettings />
+              </PrivateRoute>
+            }
+          />
+
+          {/* 情绪星图 */}
+          <Route
+            path="/emotion"
+            element={
+              <PrivateRoute>
+                <EmotionMap />
               </PrivateRoute>
             }
           />

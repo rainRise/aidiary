@@ -95,6 +95,10 @@ app.include_router(community.router, prefix="/api/v1", tags=["社区"])
 from app.api.v1 import assistant
 app.include_router(assistant.router, prefix="/api/v1", tags=["映记精灵"])
 
+# 导入并注册情绪特征分析路由
+from app.api.v1 import emotion
+app.include_router(emotion.router, prefix="/api/v1", tags=["情绪特征分析"])
+
 # 挂载静态文件目录
 UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(os.path.join(UPLOADS_DIR, "avatars"), exist_ok=True)
