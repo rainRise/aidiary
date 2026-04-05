@@ -464,7 +464,7 @@ export default function ProfileSettings() {
                 <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
                   <p className="text-[11px] text-stone-400 mb-1">当前状态</p>
                   <p className={`text-sm font-semibold ${openClawStatus?.connected ? 'text-emerald-500' : 'text-stone-500'}`}>
-                    {openClawStatus?.connected ? '已接入' : '未接入'}
+                    {openClawStatus?.connected ? '已生成令牌' : '尚未生成令牌'}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
