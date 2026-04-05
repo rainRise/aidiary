@@ -12,8 +12,10 @@
 """
 import re
 import math
+import os
 import logging
 from collections import Counter
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -157,6 +159,118 @@ class EmotionFeatureExtractor:
 
     def __init__(self):
         jieba.setLogLevel(logging.WARNING)
+        self.vad_lexicon: dict[str, tuple[float, float, float]] = dict(EMOTION_LEXICON)
+        self._load_external_lexicons_if_enabled()
+
+    def _load_external_lexicons_if_enabled(self) -> None:
+        """
+        可选加载外部情绪词典（如 NTUSD），用于补充现有 VAD 词典覆盖。
+
+        环境变量：
+        - EMOTION_EXT_LEXICON_ENABLED=true/false（默认 true）
+        - EMOTION_EXT_LEXICON_WEIGHT=0.65（0~1，外部词典融合权重）
+        - EMOTION_EXT_LEXICON_POS_PATH=...（正向词表路径）
+        - EMOTION_EXT_LEXICON_NEG_PATH=...（负向词表路径）
+        """
+        enabled = os.getenv("EMOTION_EXT_LEXICON_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+        if not enabled:
+            logger.info("[EmotionFeature] 外部词典已禁用")
+            return
+
+        app_dir = Path(__file__).resolve().parents[1]
+        default_pos = app_dir / "data" / "lexicons" / "ntusd_positive_simplified.txt"
+        default_neg = app_dir / "data" / "lexicons" / "ntusd_negative_simplified.txt"
+
+        pos_path = Path(os.getenv("EMOTION_EXT_LEXICON_POS_PATH", str(default_pos))).expanduser()
+        neg_path = Path(os.getenv("EMOTION_EXT_LEXICON_NEG_PATH", str(default_neg))).expanduser()
+
+        try:
+            ext_weight = float(os.getenv("EMOTION_EXT_LEXICON_WEIGHT", "0.65"))
+        except Exception:
+            ext_weight = 0.65
+        ext_weight = float(np.clip(ext_weight, 0.0, 1.0))
+
+        pos_words = self._load_word_list(pos_path)
+        neg_words = self._load_word_list(neg_path)
+
+        if not pos_words and not neg_words:
+            logger.info(
+                "[EmotionFeature] 未找到外部词典文件，跳过融合。POS=%s NEG=%s",
+                pos_path, neg_path
+            )
+            return
+
+        # 极性词典映射到基础 VAD 原型值（可后续基于评测调参）
+        pos_proto = (0.62, 0.55, 0.58)
+        neg_proto = (-0.62, 0.58, 0.32)
+
+        added = 0
+        updated = 0
+
+        for w in pos_words:
+            if self._merge_word_vad(w, pos_proto, ext_weight):
+                added += 1
+            else:
+                updated += 1
+
+        for w in neg_words:
+            if self._merge_word_vad(w, neg_proto, ext_weight):
+                added += 1
+            else:
+                updated += 1
+
+        logger.info(
+            "[EmotionFeature] 外部词典融合完成: pos=%d neg=%d added=%d updated=%d weight=%.2f",
+            len(pos_words), len(neg_words), added, updated, ext_weight
+        )
+
+    @staticmethod
+    def _load_word_list(path: Path) -> list[str]:
+        if not path.exists():
+            return []
+        words: list[str] = []
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                for raw in f:
+                    line = raw.strip()
+                    if not line:
+                        continue
+                    # 兼容 "词\t分数" / "词 分数" / "词"
+                    token = re.split(r"[\t\s,]+", line)[0].strip()
+                    if token:
+                        words.append(token)
+        except Exception as e:
+            logger.warning("[EmotionFeature] 读取词典失败: %s err=%s", path, e)
+            return []
+        return words
+
+    def _merge_word_vad(
+        self,
+        word: str,
+        ext_vad: tuple[float, float, float],
+        ext_weight: float,
+    ) -> bool:
+        """
+        融合单词 VAD。
+
+        Returns:
+            bool: True 表示新增词；False 表示更新已有词。
+        """
+        existing = self.vad_lexicon.get(word)
+        if existing is None:
+            self.vad_lexicon[word] = ext_vad
+            return True
+
+        base_v, base_a, base_d = existing
+        ext_v, ext_a, ext_d = ext_vad
+        w = ext_weight
+        merged = (
+            float(np.clip((1 - w) * base_v + w * ext_v, -1, 1)),
+            float(np.clip((1 - w) * base_a + w * ext_a, 0, 1)),
+            float(np.clip((1 - w) * base_d + w * ext_d, 0, 1)),
+        )
+        self.vad_lexicon[word] = merged
+        return False
 
     def extract(self, text: str) -> np.ndarray:
         """
@@ -223,10 +337,10 @@ class EmotionFeatureExtractor:
         dom_scores: list[float] = []
 
         for i, word in enumerate(words):
-            if word not in EMOTION_LEXICON:
+            if word not in self.vad_lexicon:
                 continue
 
-            v, a, d = EMOTION_LEXICON[word]
+            v, a, d = self.vad_lexicon[word]
             # 向前扫描修饰词（窗口=3）
             modifier = 1.0
             negated = False
@@ -277,8 +391,8 @@ class EmotionFeatureExtractor:
         # 找到匹配的情绪词
         matched_emotions = []
         for w in words:
-            if w in EMOTION_LEXICON:
-                v, a, d = EMOTION_LEXICON[w]
+            if w in self.vad_lexicon:
+                v, a, d = self.vad_lexicon[w]
                 matched_emotions.append({
                     "word": w,
                     "valence": v,
