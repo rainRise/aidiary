@@ -122,8 +122,11 @@ APP_NAME=印记
 DEBUG=false
 ALLOWED_ORIGINS=["https://yourdomain.com"]
 
-# 数据库
-DATABASE_URL=sqlite+aiosqlite:///./yinji.db
+# 数据库（生产环境建议 PostgreSQL）
+# 开发环境（SQLite）
+# DATABASE_URL=sqlite+aiosqlite:///./yinji.db
+# 生产环境（PostgreSQL + asyncpg）
+DATABASE_URL=postgresql+asyncpg://yinji_user:your-strong-password@127.0.0.1:5432/yinji_db
 
 # JWT密钥（生产环境必须修改）
 SECRET_KEY=your-secret-key-here
@@ -171,7 +174,7 @@ docker-compose restart
 - ⚠️ **不要**将 `.env` 文件提交到Git
 - ⚠️ **不要**将数据库文件提交到Git
 - ⚠️ 生产环境必须修改 `SECRET_KEY`
-- ⚠️ 生产环境建议使用PostgreSQL替代SQLite
+- ✅ 生产环境请使用 PostgreSQL（`postgresql+asyncpg`）
 - ⚠️ 配置HTTPS和防火墙
 
 ## 📄 许可证
