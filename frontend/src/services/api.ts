@@ -41,7 +41,22 @@ function handleAuthExpired() {
 
 // 响应拦截器 - 401 时自动刷新 token
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const payload = response?.data
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      'code' in payload &&
+      'message' in payload &&
+      'request_id' in payload &&
+      'data' in payload
+    ) {
+      response.data = payload.data
+      ;(response as any).requestId = payload.request_id
+      ;(response as any).message = payload.message
+    }
+    return response
+  },
   async (error) => {
     const originalRequest = error.config
     if (error.response?.status === 401 && !originalRequest._retry) {

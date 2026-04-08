@@ -490,3 +490,23 @@ async def get_growth_daily_insight(
         "cached": False,
         "source": source,
     }
+
+
+# ==================== RESTful 别名路由（v1兼容） ====================
+
+
+@router.post("/diary-images", summary="上传日记图片（REST别名）")
+async def upload_diary_image_rest(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+):
+    return await upload_diary_image(file=file, current_user=current_user)
+
+
+@router.post("/timeline-events/rebuild", summary="重建时间轴事件（REST别名）")
+async def rebuild_timeline_events_rest(
+    days: int = Query(180, ge=7, le=3650, description="回溯天数"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await rebuild_my_timeline(days=days, current_user=current_user, db=db)

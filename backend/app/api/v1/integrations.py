@@ -356,3 +356,33 @@ async def ingest_openclaw_diary(
         title=created.title,
         word_count=created.word_count,
     )
+
+
+# ==================== RESTful 别名路由（v1兼容） ====================
+
+
+@router.post("/openclaw-tokens", response_model=IntegrationTokenCreateResponse, summary="生成OpenClaw令牌（REST别名）")
+async def create_openclaw_token_rest(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await create_openclaw_token(request=request, current_user=current_user, db=db)
+
+
+@router.delete("/openclaw-tokens", summary="关闭OpenClaw接入（REST别名）")
+async def revoke_openclaw_token_rest(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await revoke_openclaw_token(current_user=current_user, db=db)
+
+
+@router.post("/openclaw-entries", response_model=ExternalDiaryIngestResponse, summary="OpenClaw写入日记（REST别名）")
+async def ingest_openclaw_diary_rest(
+    request: Request,
+    raw_token: str = Depends(_resolve_external_token),
+    mode: Optional[str] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    return await ingest_openclaw_diary(request=request, raw_token=raw_token, mode=mode, db=db)

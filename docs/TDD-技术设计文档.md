@@ -2,6 +2,23 @@
 
 ## 1. 技术架构概览
 
+### 1.0 API 契约（2026-04-08 更新）
+
+- 统一成功响应（`/api/v1/*`）：`{ code, message, data, request_id }`
+- 统一错误响应：`{ code, message, data, request_id }`
+- 鉴权方式：
+  - Bearer：`Authorization: Bearer <access_token>`
+  - Cookie：`access_token` / `refresh_token`（httpOnly）
+- 文档入口：
+  - `/api/doc`（Swagger）
+  - `/api/redoc`（Redoc）
+  - `/api/openapi.json`（Schema）
+- 文档辅助接口：
+  - `/api/meta/auth-guide`
+  - `/api/meta/error-codes`
+  - `/api/meta/examples`
+
+
 ### 1.1 技术栈选型
 
 | 层级 | 技术选型 | 理由 |

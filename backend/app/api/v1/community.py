@@ -321,3 +321,32 @@ async def list_view_history(
         items=items, total=total, page=page,
         page_size=page_size, total_pages=total_pages
     )
+
+
+# ==================== RESTful 别名路由（v1兼容） ====================
+
+
+@router.post("/community-images", summary="上传社区图片（REST别名）")
+async def upload_community_image_rest(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+):
+    return await upload_community_image(file=file, current_user=current_user)
+
+
+@router.post("/posts/{post_id}/likes", summary="切换点赞（REST别名）")
+async def toggle_post_like_rest(
+    post_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await toggle_like(post_id=post_id, current_user=current_user, db=db)
+
+
+@router.post("/posts/{post_id}/collections", summary="切换收藏（REST别名）")
+async def toggle_post_collection_rest(
+    post_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await toggle_collect(post_id=post_id, current_user=current_user, db=db)

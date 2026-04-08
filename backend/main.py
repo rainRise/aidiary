@@ -6,11 +6,13 @@ import os
 import asyncio
 import uuid
 import logging
+import json
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+from fastapi.openapi.utils import get_openapi
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -52,7 +54,42 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="基于RAG知识库的智能日记应用",
+    description=(
+        "基于RAG知识库的智能日记应用\n\n"
+        "## 鉴权方式\n"
+        "- Bearer Token：`Authorization: Bearer <access_token>`\n"
+        "- Cookie（推荐Web端）：`access_token` / `refresh_token`（httpOnly）\n\n"
+        "## 统一响应结构\n"
+        "成功：`{ code, message, data, request_id }`\n"
+        "错误：`{ code, message, data, request_id }`\n\n"
+        "## 常见错误码\n"
+        "- `400` 参数错误\n"
+        "- `401` 未认证或认证失效\n"
+        "- `403` 已认证但无权限\n"
+        "- `404` 资源不存在\n"
+        "- `409` 资源冲突\n"
+        "- `422` 校验失败\n"
+        "- `429` 请求过频\n"
+        "- `500` 服务器内部错误\n\n"
+        "## 示例\n"
+        "请求：`POST /api/v1/auth/login/password`\n"
+        "```json\n"
+        "{ \"email\": \"demo@example.com\", \"password\": \"******\" }\n"
+        "```\n"
+        "响应：\n"
+        "```json\n"
+        "{\n"
+        "  \"code\": 200,\n"
+        "  \"message\": \"Success\",\n"
+        "  \"data\": {\n"
+        "    \"access_token\": \"...\",\n"
+        "    \"token_type\": \"bearer\",\n"
+        "    \"user\": { \"id\": 1, \"email\": \"demo@example.com\" }\n"
+        "  },\n"
+        "  \"request_id\": \"uuid\"\n"
+        "}\n"
+        "```"
+    ),
     lifespan=lifespan,
 )
 
@@ -75,6 +112,45 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        return response
+
+
+class SuccessEnvelopeMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        # 仅包裹业务API成功响应，避免影响文档、静态资源、流式输出
+        if (
+            not request.url.path.startswith("/api/v1/")
+            or response.status_code >= 400
+            or "application/json" not in (response.headers.get("content-type", ""))
+            or request.url.path.startswith("/api/v1/assistant/chat/stream")
+        ):
+            return response
+
+        raw_body = getattr(response, "body", b"")
+        if not raw_body:
+            return response
+
+        try:
+            payload = json.loads(raw_body.decode("utf-8"))
+        except Exception:
+            return response
+
+        if (
+            isinstance(payload, dict)
+            and {"code", "message", "data", "request_id"}.issubset(payload.keys())
+        ):
+            return response
+
+        request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+        wrapped = {
+            "code": response.status_code,
+            "message": "Success",
+            "data": payload,
+            "request_id": request_id,
+        }
+        response.body = json.dumps(wrapped, ensure_ascii=False).encode("utf-8")
+        response.headers["content-length"] = str(len(response.body))
         return response
 
 
@@ -154,6 +230,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(SuccessEnvelopeMiddleware)
 
 # 注册路由
 app.include_router(auth_router, prefix="/api/v1", tags=["认证"])
@@ -219,6 +296,35 @@ async def openapi_alias():
     return JSONResponse(app.openapi())
 
 
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    components = schema.setdefault("components", {})
+    security_schemes = components.setdefault("securitySchemes", {})
+    security_schemes["BearerAuth"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+    }
+    security_schemes["CookieAuth"] = {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "access_token",
+    }
+    schema["security"] = [{"BearerAuth": []}, {"CookieAuth": []}]
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
+
+
 @app.get("/api/doc", include_in_schema=False)
 async def swagger_ui_alias():
     """标准化 Swagger 文档入口"""
@@ -262,6 +368,102 @@ async def redoc_alias():
         openapi_url="/api/openapi.json",
         title=f"{settings.app_name} API Redoc",
     )
+
+
+@app.get("/api/meta/auth-guide", tags=["API文档"], summary="鉴权说明（Bearer/Cookie）")
+async def api_auth_guide():
+    return {
+        "title": "Authentication Guide",
+        "modes": [
+            {
+                "name": "Bearer Token",
+                "header": "Authorization: Bearer <access_token>",
+                "scenarios": ["脚本调用", "移动端", "第三方集成"],
+            },
+            {
+                "name": "Cookie Auth",
+                "cookies": ["access_token", "refresh_token"],
+                "scenarios": ["浏览器前端（推荐）"],
+                "notes": "使用 httpOnly Cookie，前端无需手动读写 token。",
+            },
+        ],
+        "refresh_flow": [
+            "访问受保护接口返回401",
+            "调用 POST /api/v1/auth/refresh 或 POST /api/v1/auth/token-refreshes",
+            "重试原请求",
+        ],
+    }
+
+
+@app.get("/api/meta/error-codes", tags=["API文档"], summary="错误码手册")
+async def api_error_codes():
+    return {
+        "codes": [
+            {"code": 400, "name": "Bad Request", "description": "参数错误或业务前置校验失败"},
+            {"code": 401, "name": "Unauthorized", "description": "未登录、token无效或已过期"},
+            {"code": 403, "name": "Forbidden", "description": "已认证但无权限"},
+            {"code": 404, "name": "Not Found", "description": "资源不存在"},
+            {"code": 409, "name": "Conflict", "description": "资源冲突（如重复）"},
+            {"code": 422, "name": "Unprocessable Entity", "description": "请求体语义校验失败"},
+            {"code": 429, "name": "Too Many Requests", "description": "触发频率限制"},
+            {"code": 500, "name": "Internal Server Error", "description": "服务器内部异常"},
+        ],
+        "error_response_example": {
+            "code": 422,
+            "message": "Validation failed",
+            "data": {
+                "errors": [
+                    {"field": "email", "message": "Field required", "type": "missing"}
+                ]
+            },
+            "request_id": "uuid",
+        },
+    }
+
+
+@app.get("/api/meta/examples", tags=["API文档"], summary="常用接口请求/响应示例")
+async def api_examples():
+    return {
+        "examples": [
+            {
+                "name": "密码登录",
+                "request": {
+                    "method": "POST",
+                    "url": "/api/v1/auth/password-sessions",
+                    "json": {"email": "demo@example.com", "password": "******"},
+                },
+                "response": {
+                    "code": 200,
+                    "message": "Success",
+                    "data": {
+                        "access_token": "jwt-token",
+                        "token_type": "bearer",
+                        "user": {"id": 1, "email": "demo@example.com"},
+                    },
+                    "request_id": "uuid",
+                },
+            },
+            {
+                "name": "创建日记",
+                "request": {
+                    "method": "POST",
+                    "url": "/api/v1/diaries",
+                    "json": {
+                        "title": "今天的记录",
+                        "content": "今天完成了一个重要功能。",
+                        "diary_date": "2026-04-08",
+                        "importance_score": 8,
+                    },
+                },
+                "response": {
+                    "code": 200,
+                    "message": "Success",
+                    "data": {"id": 101, "title": "今天的记录"},
+                    "request_id": "uuid",
+                },
+            },
+        ]
+    }
 
 
 if __name__ == "__main__":

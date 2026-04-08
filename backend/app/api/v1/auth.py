@@ -501,3 +501,78 @@ async def test_email(
         )
 
     return {"success": True, "message": f"测试邮件已发送到 {email}"}
+
+
+# ==================== RESTful 别名路由（v1兼容） ====================
+# 说明：保留历史动作式路径，新增资源化路径，便于前后端逐步迁移。
+
+
+@router.post("/registration-codes", summary="发送注册验证码（REST别名）")
+async def create_registration_code(
+    request: SendCodeRequest,
+    raw_request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    return await send_register_code(request=request, raw_request=raw_request, db=db)
+
+
+@router.post("/registration-verifications", summary="验证注册验证码（REST别名）")
+async def create_registration_verification(
+    request: VerifyCodeRequest,
+    raw_request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    return await verify_register_code(request=request, raw_request=raw_request, db=db)
+
+
+@router.post("/login-codes", summary="发送登录验证码（REST别名）")
+async def create_login_code(
+    request: SendCodeRequest,
+    raw_request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    return await send_login_code(request=request, raw_request=raw_request, db=db)
+
+
+@router.post("/password-sessions", summary="密码登录创建会话（REST别名）")
+async def create_password_session(
+    request: PasswordLoginRequest,
+    raw_request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    return await login_with_password(request=request, raw_request=raw_request, db=db)
+
+
+@router.post("/verification-sessions", summary="验证码登录创建会话（REST别名）")
+async def create_verification_session(
+    request: LoginRequest,
+    raw_request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    return await login(request=request, raw_request=raw_request, db=db)
+
+
+@router.post("/password-reset-codes", summary="发送重置密码验证码（REST别名）")
+async def create_password_reset_code(
+    request: SendCodeRequest,
+    raw_request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    return await send_reset_password_code(request=request, raw_request=raw_request, db=db)
+
+
+@router.post("/password-resets", summary="重置密码（REST别名）")
+async def create_password_reset(
+    request: ResetPasswordRequest,
+    raw_request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    return await reset_password(request=request, raw_request=raw_request, db=db)
+
+
+@router.post("/token-refreshes", summary="刷新访问令牌（REST别名）")
+async def create_token_refresh(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    return await refresh_access_token(request=request, db=db)
