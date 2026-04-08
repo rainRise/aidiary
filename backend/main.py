@@ -4,9 +4,15 @@ FastAPI主应用
 """
 import os
 import asyncio
+import uuid
+import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -15,6 +21,8 @@ from app.db import init_db
 from app.api.v1 import auth
 from app.api.v1.auth import router as auth_router
 from app.services.scheduler_service import scheduler_loop
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -45,7 +53,7 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="基于RAG知识库的智能日记应用",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # 配置CORS
@@ -70,6 +78,81 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class RequestIdMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        request.state.request_id = request_id
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+
+def _error_payload(
+    *,
+    request: Request,
+    code: int,
+    message: str,
+    data=None,
+):
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    return {
+        "code": code,
+        "message": message,
+        "data": data,
+        "request_id": request_id,
+        # 兼容旧前端 err.response.data.detail 的读取逻辑
+        "detail": message,
+    }
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    detail = exc.detail
+    message = detail if isinstance(detail, str) else "Request failed"
+    data = None if isinstance(detail, str) else detail
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=_error_payload(request=request, code=exc.status_code, message=message, data=data),
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = []
+    for err in exc.errors():
+        loc = err.get("loc", [])
+        field = ".".join(str(i) for i in loc if i != "body")
+        errors.append({
+            "field": field or "request",
+            "message": err.get("msg", "Invalid value"),
+            "type": err.get("type", "validation_error"),
+        })
+    return JSONResponse(
+        status_code=422,
+        content=_error_payload(
+            request=request,
+            code=422,
+            message="Validation failed",
+            data={"errors": errors},
+        ),
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled server error", exc_info=exc)
+    return JSONResponse(
+        status_code=500,
+        content=_error_payload(
+            request=request,
+            code=500,
+            message="Internal server error",
+            data=None,
+        ),
+    )
+
+
+app.add_middleware(RequestIdMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
 # 注册路由
@@ -128,6 +211,39 @@ async def health_check():
         "status": "healthy",
         "database": "connected"
     }
+
+
+@app.get("/api/openapi.json", include_in_schema=False)
+async def openapi_alias():
+    """标准化 API Schema 入口（兼容 /api/doc）"""
+    return JSONResponse(app.openapi())
+
+
+@app.get("/api/doc", include_in_schema=False)
+async def swagger_ui_alias():
+    """标准化 Swagger 文档入口"""
+    return get_swagger_ui_html(
+        openapi_url="/api/openapi.json",
+        title=f"{settings.app_name} API Docs",
+    )
+
+
+@app.get("/api/docs", include_in_schema=False)
+async def swagger_ui_alias_docs():
+    """兼容部分团队习惯使用 /api/docs"""
+    return get_swagger_ui_html(
+        openapi_url="/api/openapi.json",
+        title=f"{settings.app_name} API Docs",
+    )
+
+
+@app.get("/api/redoc", include_in_schema=False)
+async def redoc_alias():
+    """标准化 Redoc 文档入口"""
+    return get_redoc_html(
+        openapi_url="/api/openapi.json",
+        title=f"{settings.app_name} API Redoc",
+    )
 
 
 if __name__ == "__main__":
