@@ -228,9 +228,27 @@ async def swagger_ui_alias():
     )
 
 
+@app.get("/api/doc/", include_in_schema=False)
+async def swagger_ui_alias_slash():
+    """兼容尾斜杠 /api/doc/"""
+    return get_swagger_ui_html(
+        openapi_url="/api/openapi.json",
+        title=f"{settings.app_name} API Docs",
+    )
+
+
 @app.get("/api/docs", include_in_schema=False)
 async def swagger_ui_alias_docs():
     """兼容部分团队习惯使用 /api/docs"""
+    return get_swagger_ui_html(
+        openapi_url="/api/openapi.json",
+        title=f"{settings.app_name} API Docs",
+    )
+
+
+@app.get("/api/docs/", include_in_schema=False)
+async def swagger_ui_alias_docs_slash():
+    """兼容尾斜杠 /api/docs/"""
     return get_swagger_ui_html(
         openapi_url="/api/openapi.json",
         title=f"{settings.app_name} API Docs",
