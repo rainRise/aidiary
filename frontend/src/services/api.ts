@@ -34,7 +34,17 @@ function handleAuthExpired() {
     error: null,
   })
 
-  if (window.location.pathname !== '/welcome') {
+  const publicPaths = new Set([
+    '/welcome',
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/privacy',
+    '/terms',
+    '/refund',
+  ])
+
+  if (!publicPaths.has(window.location.pathname)) {
     window.location.replace('/welcome')
   }
 }

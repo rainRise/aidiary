@@ -1,6 +1,6 @@
 // App根组件
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { ToastProvider } from '@/components/ui/toast'
 import YinjiSprite from '@/components/assistant/YinjiSprite'
@@ -59,24 +59,34 @@ function PublicRoute({ children }: { children: React.ReactElement }) {
   return children
 }
 
-function App() {
+function AppRoutes() {
   const { checkAuth } = useAuthStore()
+  const location = useLocation()
+
+  const hideSpritePaths = new Set([
+    '/welcome',
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/privacy',
+    '/terms',
+    '/refund',
+  ])
+  const showSprite = !hideSpritePaths.has(location.pathname)
 
   useEffect(() => {
     checkAuth()
   }, [checkAuth])
 
   return (
-    <ToastProvider>
-    <BrowserRouter>
-      <Suspense
-        fallback={
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-          </div>
-        }
-      >
-        <Routes>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      }
+    >
+      <Routes>
           {/* 公开路由 */}
           <Route
             path="/welcome"
@@ -241,10 +251,18 @@ function App() {
 
           {/* 404页面 */}
           <Route path="*" element={<Navigate to="/welcome" replace />} />
-        </Routes>
-        <YinjiSprite />
-      </Suspense>
-    </BrowserRouter>
+      </Routes>
+      {showSprite ? <YinjiSprite /> : null}
+    </Suspense>
+  )
+}
+
+function App() {
+  return (
+    <ToastProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
     </ToastProvider>
   )
 }
