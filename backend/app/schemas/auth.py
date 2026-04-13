@@ -68,6 +68,8 @@ class UserResponse(BaseModel):
     social_style: Optional[str] = None
     current_state: Optional[str] = None
     catchphrases: Optional[list] = None
+    role: str = "student"
+    counselor_info: Optional[dict] = None
     is_active: bool
     is_verified: bool
     created_at: datetime

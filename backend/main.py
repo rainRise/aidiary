@@ -263,6 +263,14 @@ app.include_router(integrations.router, prefix="/api/v1", tags=["外部接入"])
 from app.api.v1 import emotion
 app.include_router(emotion.router, prefix="/api/v1", tags=["情绪特征分析"])
 
+# 导入并注册辅导员/心理老师认证路由
+from app.api.v1 import counselor
+app.include_router(counselor.router, prefix="/api/v1", tags=["辅导员/心理老师"])
+
+# 导入并注册管理后台路由
+from app.api.v1 import admin
+app.include_router(admin.router, prefix="/api/v1", tags=["管理后台"])
+
 # 挂载静态文件目录
 UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(os.path.join(UPLOADS_DIR, "avatars"), exist_ok=True)

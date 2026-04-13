@@ -43,6 +43,10 @@ class CommunityPost(Base):
     comment_count: Mapped[int] = mapped_column(Integer, default=0)
     collect_count: Mapped[int] = mapped_column(Integer, default=0)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_hidden: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0",
+        comment="管理员隐藏标记",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now()

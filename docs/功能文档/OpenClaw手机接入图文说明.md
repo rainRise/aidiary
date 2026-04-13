@@ -159,15 +159,15 @@ flowchart LR
 
 ---
 
-## 七、下载位置
+## 七、开源仓库
 
-OpenClaw skill 包目录：
+OpenClaw 技能包已作为独立开源仓库发布：
 
-- [openclaw-skill](/D:/bigproject/映记/docs/integrations/openclaw-skill)
+- 仓库地址：[github.com/rain1andsnow2a/yinji-openclaw-skill](https://github.com/rain1andsnow2a/yinji-openclaw-skill)
 
-核心文件：
+包含文件：
 
-- [skill.md](/D:/bigproject/映记/docs/integrations/openclaw-skill/skill.md)
-- [http-action.json](/D:/bigproject/映记/docs/integrations/openclaw-skill/http-action.json)
-- [examples.md](/D:/bigproject/映记/docs/integrations/openclaw-skill/examples.md)
-- [test_ingest.py](/D:/bigproject/映记/docs/integrations/openclaw-skill/test_ingest.py)
+- `skill.md` — 技能说明与行为约束
+- `http-action.json` — HTTP 动作配置示例
+- `examples.md` — 提示词版本（不支持结构化动作时使用）
+- `test_ingest.py` — 本地联调脚本

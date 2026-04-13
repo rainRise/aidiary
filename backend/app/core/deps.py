@@ -2,14 +2,14 @@
 FastAPI依赖项
 常用的依赖注入函数
 """
-from typing import Optional
+from typing import Optional, List
 from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decode_access_token
 from app.db import get_db
-from app.models.database import User
+from app.models.database import User, UserRole
 
 # HTTP Bearer认证（设为可选，cookie 优先）
 security = HTTPBearer(auto_error=False)
@@ -99,6 +99,39 @@ async def get_current_active_user(
             detail="用户未激活"
         )
     return current_user
+
+
+def require_role(*allowed_roles: str):
+    """
+    角色权限守卫工厂函数
+
+    用法:
+        current_user: User = Depends(require_role("admin", "counselor"))
+
+    Args:
+        allowed_roles: 允许访问的角色列表
+
+    Returns:
+        依赖注入函数
+    """
+    async def _check_role(
+        current_user: User = Depends(get_current_active_user)
+    ) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="权限不足，无法访问此资源",
+            )
+        return current_user
+    return _check_role
+
+
+# 常用守卫快捷方式
+require_admin = require_role(UserRole.admin.value)
+require_counselor = require_role(UserRole.counselor.value, UserRole.psychologist.value)
+require_counselor_or_admin = require_role(
+    UserRole.counselor.value, UserRole.psychologist.value, UserRole.admin.value
+)
 
 
 def get_trace_id(x_trace_id: Optional[str] = Header(None)) -> str:

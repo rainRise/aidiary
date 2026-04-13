@@ -16,6 +16,12 @@ export const routes = {
   timeline: '/growth',
   dashboard: '/dashboard',
   settings: '/settings',
+
+  // 辅导员/心理老师
+  counselorApply: '/counselor/apply',
+
+  // 管理后台
+  admin: '/admin',
 } as const
 
 export const publicRoutes = [routes.login, routes.register]
@@ -28,4 +34,6 @@ export const privateRoutes = [
   routes.timeline,
   routes.dashboard,
   routes.settings,
+  routes.counselorApply,
+  routes.admin,
 ]
