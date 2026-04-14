@@ -89,6 +89,16 @@ class Settings(BaseSettings):
         description="DeepSeek API地址"
     )
 
+    # ==================== Gemini API配置 ====================
+    gemini_api_key: str = Field(
+        default="",
+        description="Gemini API密钥"
+    )
+    gemini_base_url: str = Field(
+        default="https://generativelanguage.googleapis.com/v1beta",
+        description="Gemini API地址"
+    )
+
     # ==================== Qdrant 向量检索配置 ====================
     qdrant_url: str = Field(
         default="",

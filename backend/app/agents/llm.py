@@ -1,6 +1,6 @@
 """
-DeepSeek API 客户端
-简化版LLM调用，避免复杂的依赖
+LLM 客户端
+支持 DeepSeek 和 Gemini 模型
 """
 import httpx
 import json
@@ -186,8 +186,130 @@ class DeepSeekClient:
         )
 
 
+class GeminiClient:
+    """Gemini API 客户端"""
+
+    def __init__(self):
+        self.api_key = settings.gemini_api_key
+        self.base_url = settings.gemini_base_url
+        self.model = "gemini-2.0-flash"
+
+    async def chat(
+        self,
+        messages: List[Dict[str, str]],
+        model: str = "gemini-2.0-flash",
+        temperature: float = 0.7,
+        max_tokens: int = 2000,
+    ) -> str:
+        """调用 Gemini 聊天 API"""
+        # 提取 system 和 user 消息
+        system_content = ""
+        user_content = ""
+        
+        for msg in messages:
+            if msg.get("role") == "system":
+                system_content = msg.get("content", "")
+            elif msg.get("role") == "user":
+                user_content = msg.get("content", "")
+
+        # 构建 Gemini 格式的内容
+        contents = []
+        if system_content:
+            parts = [{"text": system_content}]
+            contents.append({"role": "user", "parts": parts})
+        
+        if user_content:
+            parts = [{"text": user_content}]
+            contents.append({"role": "model", "parts": parts})
+
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens,
+                "topP": 0.95,
+                "topK": 40
+            }
+        }
+
+        url = f"{self.base_url}/models/{model}:generateContent?key={self.api_key}"
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+
+            try:
+                return result["candidates"][0]["content"]["parts"][0]["text"]
+            except (KeyError, IndexError):
+                logger.error(f"Gemini API 返回格式异常: {result}")
+                raise ValueError("Gemini API 响应格式异常")
+
+    async def chat_with_system(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        model: str = "gemini-2.0-flash",
+        temperature: float = 0.7,
+    ) -> str:
+        """使用系统提示词的聊天"""
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+        return await self.chat(messages, model, temperature)
+
+
 # 创建全局实例
 deepseek_client = DeepSeekClient()
+gemini_client = GeminiClient()
+
+
+class MultiModelClient:
+    """多模型客户端，支持 DeepSeek 和 Gemini"""
+
+    def __init__(self, default_model: str = "deepseek"):
+        self.default_model = default_model
+
+    async def chat(
+        self,
+        messages: List[Dict[str, str]],
+        model: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2000,
+        response_format: Optional[str] = None
+    ) -> str:
+        """调用聊天API"""
+        model = model or self.default_model
+
+        if model.startswith("gemini"):
+            return await gemini_client.chat(messages, model, temperature, max_tokens)
+        else:
+            return await deepseek_client.chat(messages, temperature, max_tokens, response_format)
+
+    async def chat_with_system(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        model: Optional[str] = None,
+        temperature: float = 0.7,
+        response_format: Optional[str] = None
+    ) -> str:
+        """使用系统提示词的聊天"""
+        model = model or self.default_model
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+        return await self.chat(messages, model, temperature, response_format=response_format)
+
+
+# 多模型全局实例
+multi_model_client = MultiModelClient()
 
 
 # 为了兼容性，创建ChatOpenAI的替代类
