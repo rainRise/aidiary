@@ -12,7 +12,7 @@ import {
   $getRoot, $createParagraphNode, $getSelection, $isRangeSelection,
   FORMAT_TEXT_COMMAND, SELECTION_CHANGE_COMMAND, PASTE_COMMAND,
   COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_HIGH,
-  EditorState, LexicalEditor
+  EditorState, LexicalEditor, $createTextNode
 } from 'lexical'
 import { HeadingNode, QuoteNode } from '@lexical/rich-text'
 import { CodeNode } from '@lexical/code'
@@ -23,10 +23,17 @@ import {
   $convertFromMarkdownString, $convertToMarkdownString,
   TRANSFORMERS, type ElementTransformer,
 } from '@lexical/markdown'
-import { Bold, Italic, Underline, Strikethrough, Code, Type, Image as ImageIcon, Loader2, ChevronDown } from 'lucide-react'
+import { Bold, Italic, Underline, Strikethrough, Code, Type, Image as ImageIcon, Loader2, ChevronDown, Mic, MicOff } from 'lucide-react'
 import { diaryService } from '@/services/diary.service'
 import { toast } from '@/components/ui/toast'
 import { ImageNode, $createImageNode, $isImageNode } from './ImageNode'
+
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition
+    webkitSpeechRecognition: typeof SpeechRecognition
+  }
+}
 
 const IMAGE_TRANSFORMER: ElementTransformer = {
   type: 'element',
@@ -115,14 +122,100 @@ function TopToolbarPlugin({
   onRequestImage: () => void
   uploading: boolean
 }) {
+  const [editor] = useLexicalComposerContext()
+  const [isListening, setIsListening] = useState(false)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const isSupported = typeof window !== 'undefined' && 
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+
+  const handleVoiceInput = () => {
+    if (!isSupported) {
+      toast('您的浏览器不支持语音识别功能', 'error')
+      return
+    }
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+      setIsListening(false)
+      return
+    }
+
+    const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition
+    const recognition = new SpeechRecognitionClass()
+    recognition.continuous = false
+    recognition.interimResults = true
+    recognition.lang = 'zh-CN'
+
+    recognition.onstart = () => {
+      setIsListening(true)
+    }
+
+    recognition.onend = () => {
+      setIsListening(false)
+    }
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error)
+      setIsListening(false)
+      if (event.error === 'not-allowed') {
+        toast('请允许麦克风权限', 'error')
+      } else if (event.error !== 'aborted') {
+        toast(`语音识别错误: ${event.error}`, 'error')
+      }
+    }
+
+    recognition.onresult = (event) => {
+      let finalTranscript = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript
+        }
+      }
+
+      if (finalTranscript) {
+        editor.update(() => {
+          const root = $getRoot()
+          const selection = $getSelection()
+          
+          const paragraph = $createParagraphNode()
+          const textNode = $createTextNode(finalTranscript)
+          paragraph.append(textNode)
+          
+          if ($isRangeSelection(selection)) {
+            selection.insertNodes([paragraph])
+          } else {
+            root.append(paragraph)
+          }
+        })
+      }
+    }
+
+    recognitionRef.current = recognition
+    recognition.start()
+    setIsListening(true)
+  }
+
   return (
     <div className="flex items-center gap-1 px-3 py-2 border-b border-rose-50 bg-rose-50/30">
+      <ToolbarBtn title="语音输入" onClick={handleVoiceInput} disabled={!isSupported}>
+        {isListening
+          ? <Mic className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+          : <MicOff className="w-3.5 h-3.5" />}
+      </ToolbarBtn>
       <ToolbarBtn title="插入图片" onClick={onRequestImage} disabled={uploading}>
         {uploading
           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
           : <ImageIcon className="w-3.5 h-3.5" />}
       </ToolbarBtn>
-      <span className="ml-2 text-[11px] text-stone-300 select-none">选中文字可弹出格式工具栏 · 输入 / 可插入图片 · Ctrl+V 可粘贴图片</span>
+      <span className="ml-2 text-[11px] text-stone-300 select-none">
+        {isListening ? (
+          <span className="text-rose-400 animate-pulse">正在录音...</span>
+        ) : (
+          <>选中文字可弹出格式工具栏 · 输入 / 可插入图片 · Ctrl+V 可粘贴图片</>
+        )}
+      </span>
     </div>
   )
 }
