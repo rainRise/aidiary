@@ -1,10 +1,20 @@
 """
 辅导员/心理老师认证相关 Pydantic Schemas
 """
-from __future__ import annotations
-from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
+
+class BindingCreateRequest(BaseModel):
+    """绑定范围创建请求"""
+    scope_type: str = Field(
+        ...,
+        pattern="^(department|class)$",
+        description="范围类型：department（院系）或 class（班级）",
+    )
+    scope_name: str = Field(..., min_length=1, max_length=100, description="范围名称")
 
 
 class CounselorApplyRequest(BaseModel):
@@ -25,16 +35,6 @@ class CounselorApplyRequest(BaseModel):
     bindings: Optional[list[BindingCreateRequest]] = Field(
         None, description="申请绑定的范围（院系/班级）"
     )
-
-
-class BindingCreateRequest(BaseModel):
-    """绑定范围创建请求"""
-    scope_type: str = Field(
-        ...,
-        pattern="^(department|class)$",
-        description="范围类型：department（院系）或 class（班级）",
-    )
-    scope_name: str = Field(..., min_length=1, max_length=100, description="范围名称")
 
 
 class CounselorApplicationResponse(BaseModel):
