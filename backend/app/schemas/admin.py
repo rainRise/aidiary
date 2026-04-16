@@ -1,10 +1,20 @@
 """
 管理后台 Pydantic Schemas
 """
-from __future__ import annotations
-from typing import Optional
-from pydantic import BaseModel, Field
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
+
+class BindingBrief(BaseModel):
+    """绑定范围简要信息"""
+    id: int
+    scope_type: str
+    scope_name: str
+
+    class Config:
+        from_attributes = True
 
 
 # ==================== 用户管理 ====================
@@ -23,22 +33,10 @@ class AdminUserResponse(BaseModel):
     is_verified: bool
     created_at: datetime
     updated_at: datetime
-    bindings: list["BindingBrief"] = []
+    bindings: list[BindingBrief] = []
 
     class Config:
         from_attributes = True
-
-
-class BindingBrief(BaseModel):
-    """绑定范围简要信息"""
-    id: int
-    scope_type: str
-    scope_name: str
-
-    class Config:
-        from_attributes = True
-
-
 class AdminUserListResponse(BaseModel):
     """用户列表响应（分页）"""
     items: list[AdminUserResponse]

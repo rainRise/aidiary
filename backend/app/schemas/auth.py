@@ -1,10 +1,10 @@
 """
 认证相关的 Pydantic Schemas
 """
-from __future__ import annotations
-from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, EmailStr, Field
 
 
 class SendCodeRequest(BaseModel):
@@ -51,13 +51,6 @@ class PasswordLoginRequest(BaseModel):
     password: str = Field(..., min_length=6, max_length=50, description="密码")
 
 
-class TokenResponse(BaseModel):
-    """令牌响应"""
-    access_token: str = Field(..., description="访问令牌")
-    token_type: str = Field(default="bearer", description="令牌类型")
-    user: "UserResponse" = Field(..., description="用户信息")
-
-
 class UserResponse(BaseModel):
     """用户信息响应"""
     id: int
@@ -79,6 +72,13 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TokenResponse(BaseModel):
+    """令牌响应"""
+    access_token: str = Field(..., description="访问令牌")
+    token_type: str = Field(default="bearer", description="令牌类型")
+    user: UserResponse = Field(..., description="用户信息")
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -108,7 +108,3 @@ class ErrorResponse(BaseModel):
     """错误响应"""
     error: str = Field(..., description="错误消息")
     detail: Optional[str] = Field(None, description="详细错误信息")
-
-
-# 重建模型以解决前向引用问题
-TokenResponse.model_rebuild()
