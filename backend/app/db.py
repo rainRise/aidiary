@@ -64,7 +64,7 @@ async def init_db():
 
         # 创建所有表
         await conn.run_sync(Base.metadata.create_all)
-        await _ensure_user_scope_columns(conn)
+        await _ensure_user_columns(conn)
 
         # SQLite -> PostgreSQL 迁移后，部分表可能只有主键约束却没有默认序列。
         # 启动时做一次轻量自检，确保整数主键具备 nextval 默认值。
@@ -133,8 +133,8 @@ async def init_db():
                 )
 
 
-async def _ensure_user_scope_columns(conn):
-    """为既有数据库补齐用户归属字段，兼容旧库直接升级。"""
+async def _ensure_user_columns(conn):
+    """为既有数据库补齐历史缺失的用户字段，兼容旧库直接升级。"""
     dialect = conn.dialect.name
     if dialect == "sqlite":
         existing_columns = {
@@ -156,14 +156,64 @@ async def _ensure_user_scope_columns(conn):
             ).all()
         }
 
-    missing_columns = []
-    if "department" not in existing_columns:
-        missing_columns.append("department")
-    if "class_name" not in existing_columns:
-        missing_columns.append("class_name")
+    column_definitions = {
+        "avatar_url": {
+            "sqlite": "VARCHAR(500)",
+            "postgresql": "VARCHAR(500)",
+        },
+        "mbti": {
+            "sqlite": "VARCHAR(10)",
+            "postgresql": "VARCHAR(10)",
+        },
+        "social_style": {
+            "sqlite": "VARCHAR(20)",
+            "postgresql": "VARCHAR(20)",
+        },
+        "current_state": {
+            "sqlite": "VARCHAR(20)",
+            "postgresql": "VARCHAR(20)",
+        },
+        "catchphrases": {
+            "sqlite": "JSON",
+            "postgresql": "JSON",
+        },
+        "department": {
+            "sqlite": "VARCHAR(100)",
+            "postgresql": "VARCHAR(100)",
+        },
+        "class_name": {
+            "sqlite": "VARCHAR(100)",
+            "postgresql": "VARCHAR(100)",
+        },
+        "role": {
+            "sqlite": "VARCHAR(20) NOT NULL DEFAULT 'student'",
+            "postgresql": "VARCHAR(20) NOT NULL DEFAULT 'student'",
+        },
+        "counselor_info": {
+            "sqlite": "JSON",
+            "postgresql": "JSON",
+        },
+        "is_active": {
+            "sqlite": "BOOLEAN NOT NULL DEFAULT 1",
+            "postgresql": "BOOLEAN NOT NULL DEFAULT TRUE",
+        },
+        "is_verified": {
+            "sqlite": "BOOLEAN NOT NULL DEFAULT 0",
+            "postgresql": "BOOLEAN NOT NULL DEFAULT FALSE",
+        },
+    }
+
+    missing_columns = [
+        column_name
+        for column_name in column_definitions
+        if column_name not in existing_columns
+    ]
 
     if not missing_columns:
         return
 
     for column_name in missing_columns:
-        await conn.execute(text(f'ALTER TABLE users ADD COLUMN {column_name} VARCHAR(100)'))
+        definition = column_definitions[column_name][
+            "postgresql" if dialect == "postgresql" else "sqlite"
+        ]
+        await conn.execute(text(f"ALTER TABLE users ADD COLUMN {column_name} {definition}"))
