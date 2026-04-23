@@ -8,7 +8,7 @@
 - **数据库**: SQLite (开发) / PostgreSQL 16 (生产)
 - **ORM**: SQLAlchemy 2.0 (异步)
 - **认证**: JWT (python-jose)
-- **邮件**: QQ SMTP (aiosmtplib)
+- **邮件**: 阿里云 SMTP (aiosmtplib)
 - **AI**: DeepSeek V3 API
 
 ## 快速开始

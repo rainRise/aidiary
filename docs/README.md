@@ -132,7 +132,7 @@ DATABASE_URL=postgresql+asyncpg://yinji_user:your-strong-password@127.0.0.1:5432
 SECRET_KEY=your-secret-key-here
 
 # SMTP邮箱配置
-SMTP_HOST=smtpdm-ap-southeast-1.aliyuncs.com
+SMTP_HOST=smtpdm.aliyun.com
 SMTP_EMAIL=noreply@yingjiapp.com
 SMTP_PASSWORD=your-smtp-password
 
@@ -142,7 +142,7 @@ DEEPSEEK_API_KEY=your-api-key
 
 ### SMTP 配置说明
 
-**阿里云邮件推送（新加坡）**：
+**阿里云邮件推送（SMTP）**：
 1. 登录阿里云控制台
 2. 进入 **邮件推送** → **发信地址管理**
 3. 查看 SMTP 配置信息
