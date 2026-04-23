@@ -68,9 +68,9 @@ async def _analyze_user_diaries_for_date(
                 diary_id=diary.id,
             )
             processed += 1
-            print(f"  [Scheduler] ✓ user={user_id} diary={diary.id} refined")
+            print(f"  [Scheduler] OK user={user_id} diary={diary.id} refined")
         except Exception as e:
-            print(f"  [Scheduler] ✗ user={user_id} diary={diary.id} error: {e}")
+            print(f"  [Scheduler] ERROR user={user_id} diary={diary.id} error: {e}")
 
     return processed
 
@@ -105,6 +105,71 @@ async def run_daily_analysis():
                 total += count
 
         print(f"[Scheduler] === 每日分析完成 === 用户数: {len(user_ids)}, 处理日记: {total}")
+
+
+async def run_growth_analysis_for_range(
+    *,
+    start_date: date,
+    end_date: date,
+    user_id: int | None = None,
+) -> dict:
+    """
+    手动执行一段时间内的成长分析，供脚本或本地调试调用。
+
+    逻辑与午夜定时任务一致：
+    - 仅处理指定日期范围内存在日记的用户/日期
+    - 对每篇日记补齐/刷新时间轴事件，并尝试 AI 精炼
+    """
+    if start_date > end_date:
+        raise ValueError("start_date 不能晚于 end_date")
+
+    target_dates = []
+    current = start_date
+    while current <= end_date:
+        target_dates.append(current)
+        current += timedelta(days=1)
+
+    print(
+        f"\n[Scheduler] === 手动成长分析开始 === "
+        f"日期范围: {start_date} ~ {end_date}"
+        + (f" user_id={user_id}" if user_id is not None else "")
+    )
+
+    async with async_session_maker() as db:
+        user_query = select(Diary.user_id).where(Diary.diary_date.in_(target_dates))
+        if user_id is not None:
+            user_query = user_query.where(Diary.user_id == user_id)
+
+        user_result = await db.execute(user_query.distinct())
+        user_ids = [row[0] for row in user_result.all()]
+
+        if not user_ids:
+            print("[Scheduler] 指定范围内没有可分析的日记")
+            return {
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "user_ids": [],
+                "processed_diaries": 0,
+                "target_dates": [d.isoformat() for d in target_dates],
+            }
+
+        total = 0
+        for uid in user_ids:
+            for td in target_dates:
+                count = await _analyze_user_diaries_for_date(db, uid, td)
+                total += count
+
+        print(
+            f"[Scheduler] === 手动成长分析完成 === "
+            f"用户数: {len(user_ids)}, 处理日记: {total}"
+        )
+        return {
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "user_ids": user_ids,
+            "processed_diaries": total,
+            "target_dates": [d.isoformat() for d in target_dates],
+        }
 
 
 async def run_weekly_counselor_digest():
