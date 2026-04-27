@@ -12,6 +12,7 @@ import { BookOpen, Calendar, Star, MessageCircle, FileText, Loader2, FilePenLine
 import type { ReactNode } from 'react'
 import type { SocialPost } from '@/types/analysis'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { getEmotionDisplayLabel } from '@/utils/emotionLabels'
 
 function renderInline(text: string): ReactNode[] {
   // 匹配顺序：**bold** → ~~strikethrough~~ → __underline__ → `code` → *italic*
@@ -322,7 +323,7 @@ export default function DiaryDetail() {
                     className="text-xs px-3 py-1.5 rounded-2xl text-white font-medium"
                     style={{ background: 'linear-gradient(135deg, #e88f7b, #a09ab8)' }}
                   >
-                    {tag}
+                    {getEmotionDisplayLabel(t, tag)}
                   </span>
                 ))}
               </div>
@@ -457,4 +458,3 @@ export default function DiaryDetail() {
     </div>
   )
 }
-

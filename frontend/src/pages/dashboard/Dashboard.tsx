@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useDiaryStore } from '@/store/diaryStore'
 import EmotionChart, { normalizeEmotionTag } from '@/components/common/EmotionChart'
 import { PenLine, BookOpen, Settings, LogOut, Sprout, BookMarked, Moon, Heart, Clock, MessageCircle, FileText, Orbit, Sparkles } from 'lucide-react'
+import { getEmotionDisplayLabel } from '@/utils/emotionLabels'
 
 export default function Dashboard() {
   const { t } = useTranslation()
@@ -347,7 +348,7 @@ export default function Dashboard() {
                     <div className="flex gap-1.5 mt-2 flex-wrap">
                       {(diary.emotion_tags ?? []).map((tag, i) => (
                         <span key={i} className="text-[10px] px-2 py-0.5 bg-[#e7dbd5] text-[#b56f61] rounded-full">
-                          {tag}
+                          {getEmotionDisplayLabel(t, tag)}
                         </span>
                       ))}
                     </div>

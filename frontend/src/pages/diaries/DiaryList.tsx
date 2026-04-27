@@ -10,6 +10,7 @@ import { zhCN } from 'date-fns/locale'
 import { BookOpen, Sprout, Star, Search, X } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
+import { getEmotionDisplayLabel } from '@/utils/emotionLabels'
 
 const EMOTION_FILTERS_KEYS = [
   'all', 'happy', 'calm', 'anxious', 'achievement', 'satisfied', 'worried', 'exhausted'
@@ -35,7 +36,10 @@ export default function DiaryList() {
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 情绪过滤器（带翻译）
-  const EMOTION_FILTERS = EMOTION_FILTERS_KEYS.map(key => t(`diary.emotion.${key}`))
+  const EMOTION_FILTERS = EMOTION_FILTERS_KEYS.map(key => ({
+    key,
+    label: t(`diary.emotion.${key}`),
+  }))
 
   useEffect(() => {
     fetchDiaries({ emotionTag: selectedEmotion, keyword: keyword || undefined })
@@ -144,12 +148,13 @@ export default function DiaryList() {
 
         {/* 情绪筛选 */}
         <div className="flex gap-2 flex-wrap mb-6">
-          {EMOTION_FILTERS.map((label) => {
-            const isActive = label === '全部' ? selectedEmotion === undefined : selectedEmotion === label
+          {EMOTION_FILTERS.map(({ key, label }) => {
+            const isAll = key === 'all'
+            const isActive = isAll ? selectedEmotion === undefined : selectedEmotion === key
             return (
               <button
-                key={label}
-                onClick={() => setSelectedEmotion(label === '全部' ? undefined : label)}
+                key={key}
+                onClick={() => setSelectedEmotion(isAll ? undefined : key)}
                 className={`px-3.5 py-1.5 rounded-2xl text-xs font-medium transition-all duration-200 ${
                   isActive
                     ? 'text-white shadow-sm'
@@ -225,7 +230,7 @@ export default function DiaryList() {
                             key={index}
                             className="text-[10px] px-2 py-0.5 rounded-full bg-[#f5efea] text-[#b56f61] border border-[#e7dbd5]"
                           >
-                            {tag}
+                            {getEmotionDisplayLabel(t, tag)}
                           </span>
                         ))}
                       </div>
@@ -271,5 +276,4 @@ export default function DiaryList() {
     </div>
   )
 }
-
 

@@ -9,6 +9,7 @@ import { toast } from '@/components/ui/toast'
 import type { AnalysisResponse, Diary } from '@/types'
 import { format } from 'date-fns'
 import { Sparkles, Calendar, Snowflake, Heart, FileText } from 'lucide-react'
+import { getEmotionDisplayLabel } from '@/utils/emotionLabels'
 
 const warmBg = { background: 'linear-gradient(160deg, #fff8f5 0%, #fdf4ff 60%, #f5f3ff 100%)' }
 const gradientBtn = { background: 'linear-gradient(135deg, #fb7185, #c084fc)' }
@@ -187,7 +188,7 @@ export default function AnalysisResult() {
                     className="text-xs px-2.5 py-1 rounded-2xl text-white font-medium"
                     style={gradientBtn}
                   >
-                    {tag}
+                    {getEmotionDisplayLabel(t, tag)}
                   </span>
                 ))}
               </div>
@@ -242,7 +243,7 @@ export default function AnalysisResult() {
                 <p className="text-sm text-stone-600 leading-6 mb-4">{analysis.timeline_event.event_summary}</p>
                 <div className="flex flex-wrap gap-3">
                   <span className="text-xs px-3 py-1.5 rounded-2xl bg-rose-50 text-rose-400 border border-rose-100">
-                    {analysis.timeline_event.emotion_tag}
+                    {getEmotionDisplayLabel(t, analysis.timeline_event.emotion_tag)}
                   </span>
                   <span className="text-xs px-3 py-1.5 rounded-2xl bg-violet-50 text-violet-400 border border-violet-100">
                     {t('analysisResult.importanceScore', { score: analysis.timeline_event.importance_score })}
@@ -397,4 +398,3 @@ export default function AnalysisResult() {
     </div>
   )
 }
-
