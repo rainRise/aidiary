@@ -3,6 +3,7 @@ AI分析相关的API端点
 """
 from typing import Optional
 from datetime import timedelta, date
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc
@@ -95,6 +96,22 @@ def _normalize_samples(samples: list[str], limit: int = 50) -> list[str]:
     return normalized[:limit]
 
 
+def _deepseek_error_detail(error: Exception) -> str:
+    if isinstance(error, httpx.HTTPStatusError):
+        status_code = error.response.status_code
+        body = error.response.text or ""
+        if status_code == 402 or "Insufficient Balance" in body:
+            return "DeepSeek 账户余额不足，请充值或更换 API Key"
+        if status_code in (401, 403):
+            return "DeepSeek API Key 无效或权限不足，请检查后端 .env 配置"
+        if status_code == 404:
+            return "DeepSeek 接口地址或模型名称不可用，请检查 DEEPSEEK_BASE_URL / DEEPSEEK_MODEL"
+        return f"DeepSeek 请求失败（HTTP {status_code}）"
+    if isinstance(error, httpx.ConnectError):
+        return "无法连接 DeepSeek API，请检查服务器网络或代理配置"
+    return str(error)
+
+
 @router.post("/generate-title", response_model=TitleSuggestionResponse, summary="AI生成日记标题")
 async def generate_title(
     request: TitleSuggestionRequest,
@@ -135,8 +152,8 @@ async def generate_title(
         return TitleSuggestionResponse(title=title)
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"标题生成失败: {str(e)}"
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"标题生成失败：{_deepseek_error_detail(e)}"
         )
 
 

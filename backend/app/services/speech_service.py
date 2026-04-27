@@ -21,25 +21,40 @@ class SpeechService:
         self.host = "iat-api.xfyun.cn"
         self.path = "/v2/iat"
 
+    @staticmethod
+    def _appid() -> str:
+        appid = (settings.xfyun_iat_appid or "").strip()
+        if appid.upper().startswith("APPID"):
+            appid = appid[5:].strip()
+        return appid
+
+    @staticmethod
+    def _api_key() -> str:
+        return (settings.xfyun_iat_api_key or "").strip()
+
+    @staticmethod
+    def _api_secret() -> str:
+        return (settings.xfyun_iat_api_secret or "").strip()
+
     def is_configured(self) -> bool:
         return bool(
-            settings.xfyun_iat_appid
-            and settings.xfyun_iat_api_key
-            and settings.xfyun_iat_api_secret
+            self._appid()
+            and self._api_key()
+            and self._api_secret()
         )
 
     def _build_ws_url(self) -> str:
         date = formatdate(timeval=None, localtime=False, usegmt=True)
         signature_origin = f"host: {self.host}\n" f"date: {date}\n" f"GET {self.path} HTTP/1.1"
         signature_sha = hmac.new(
-            settings.xfyun_iat_api_secret.encode("utf-8"),
+            self._api_secret().encode("utf-8"),
             signature_origin.encode("utf-8"),
             digestmod=hashlib.sha256,
         ).digest()
         signature = base64.b64encode(signature_sha).decode("utf-8")
 
         authorization_origin = (
-            f'api_key="{settings.xfyun_iat_api_key}", '
+            f'api_key="{self._api_key()}", '
             f'algorithm="hmac-sha256", '
             f'headers="host date request-line", '
             f'signature="{signature}"'
@@ -97,7 +112,7 @@ class SpeechService:
                     }
                 }
                 if status == 0:
-                    payload["common"] = {"app_id": settings.xfyun_iat_appid}
+                    payload["common"] = {"app_id": self._appid()}
                     payload["business"] = {
                         "domain": "iat",
                         "language": "zh_cn",
@@ -151,4 +166,3 @@ class SpeechService:
 
 
 speech_service = SpeechService()
-

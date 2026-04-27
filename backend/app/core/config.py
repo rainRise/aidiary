@@ -99,8 +99,12 @@ class Settings(BaseSettings):
         description="DeepSeek API密钥"
     )
     deepseek_base_url: str = Field(
-        default="https://api.deepseek.com/v1",
+        default="https://api.deepseek.com",
         description="DeepSeek API地址"
+    )
+    deepseek_model: str = Field(
+        default="deepseek-v4-flash",
+        description="DeepSeek模型名称"
     )
 
     # ==================== 讯飞语音听写配置 ====================

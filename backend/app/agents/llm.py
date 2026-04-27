@@ -6,6 +6,7 @@ import httpx
 import json
 import logging
 from typing import Dict, List, Optional, AsyncGenerator
+from urllib.parse import urljoin
 
 from app.core.config import settings
 
@@ -17,8 +18,18 @@ class DeepSeekClient:
 
     def __init__(self):
         self.api_key = settings.deepseek_api_key
-        self.base_url = settings.deepseek_base_url
-        self.model = "deepseek-chat"
+        self.base_url = settings.deepseek_base_url.rstrip("/")
+        self.model = settings.deepseek_model
+
+    def _chat_completions_url(self) -> str:
+        """
+        DeepSeek 官方 OpenAI-compatible base_url 现在是 https://api.deepseek.com。
+        这里兼容旧配置里的 /v1，避免拼出 /v1/chat/completions 这类过期路径。
+        """
+        base = self.base_url
+        if base.endswith("/v1"):
+            base = base[:-3].rstrip("/")
+        return urljoin(f"{base}/", "chat/completions")
 
     async def chat(
         self,
@@ -59,11 +70,20 @@ class DeepSeekClient:
 
         async with httpx.AsyncClient(timeout=timeout_seconds) as client:
             response = await client.post(
-                f"{self.base_url}/chat/completions",
+                self._chat_completions_url(),
                 headers=headers,
                 json=payload
             )
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                logger.error(
+                    "DeepSeek API request failed status=%s url=%s body=%s",
+                    exc.response.status_code,
+                    exc.request.url,
+                    exc.response.text[:800],
+                )
+                raise
             result = response.json()
             self._log_prompt_cache_usage(result, stream=False)
 
@@ -135,11 +155,21 @@ class DeepSeekClient:
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream(
                 "POST",
-                f"{self.base_url}/chat/completions",
+                self._chat_completions_url(),
                 headers=headers,
                 json=payload
             ) as response:
-                response.raise_for_status()
+                try:
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as exc:
+                    body = await exc.response.aread()
+                    logger.error(
+                        "DeepSeek stream request failed status=%s url=%s body=%s",
+                        exc.response.status_code,
+                        exc.request.url,
+                        body.decode("utf-8", errors="ignore")[:800],
+                    )
+                    raise
                 async for line in response.aiter_lines():
                     if not line.startswith("data: "):
                         continue
@@ -255,7 +285,7 @@ class ChatOpenAI:
 def get_llm(temperature: float = 0.7):
     """获取DeepSeek LLM实例"""
     return ChatOpenAI(
-        model="deepseek-chat",
+        model=settings.deepseek_model,
         openai_api_key=settings.deepseek_api_key,
         base_url=settings.deepseek_base_url,
         temperature=temperature
