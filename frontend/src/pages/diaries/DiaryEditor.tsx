@@ -1,5 +1,5 @@
 // 日记编辑器 - 温暖柔和心理日记风格
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useDiaryStore } from '@/store/diaryStore'
@@ -18,6 +18,18 @@ const PRESET_EMOTIONS_KEYS = [
 const GUIDED_QUESTIONS_KEYS = [
   'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10'
 ]
+
+type AutoSaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+
+interface DiaryDraft {
+  title: string
+  content: string
+  contentHtml: string
+  diaryDate: string
+  emotionTags: string[]
+  importanceScore: number
+  savedAt: number
+}
 
 export default function DiaryEditor() {
   const { t } = useTranslation()
@@ -61,6 +73,12 @@ export default function DiaryEditor() {
   const [guidedQuestion, setGuidedQuestion] = useState(GUIDED_QUESTIONS[new Date().getDate() % GUIDED_QUESTIONS.length])
   const [guidanceSource, setGuidanceSource] = useState<'ai' | 'fallback'>('fallback')
   const [isLoadingGuidance, setIsLoadingGuidance] = useState(false)
+  const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>('idle')
+  const [lastAutoSavedAt, setLastAutoSavedAt] = useState<number | null>(null)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastAutoSaveSnapshotRef = useRef('')
+  const hasInitializedDraftRef = useRef(false)
+  const draftKey = `yinji:diary-draft:${isEditMode ? id : 'new'}`
 
   useEffect(() => {
     const init = async () => {
@@ -68,20 +86,104 @@ export default function DiaryEditor() {
       try {
         setIsInitializing(true)
         const diary = await diaryService.get(Number(id))
-        setTitle(diary.title || '')
-        setContent(diary.content || '')
-        setDiaryDate(diary.diary_date || new Date().toISOString().split('T')[0])
-        setEmotionTags(diary.emotion_tags || [])
-        setImportanceScore(diary.importance_score || 5)
+        const baseDraft: DiaryDraft = {
+          title: diary.title || '',
+          content: diary.content || '',
+          contentHtml: diary.content_html || '',
+          diaryDate: diary.diary_date || new Date().toISOString().split('T')[0],
+          emotionTags: diary.emotion_tags || [],
+          importanceScore: diary.importance_score || 5,
+          savedAt: Date.now(),
+        }
+        const localDraft = readDraft(draftKey)
+        const serverUpdatedAt = new Date(diary.updated_at || diary.created_at || 0).getTime()
+        const draft = localDraft && localDraft.savedAt > serverUpdatedAt ? localDraft : baseDraft
+        setTitle(draft.title)
+        setContent(draft.content)
+        setContentHtml(draft.contentHtml)
+        setDiaryDate(draft.diaryDate)
+        setEmotionTags(draft.emotionTags)
+        setImportanceScore(draft.importanceScore)
+        lastAutoSaveSnapshotRef.current = serializeDraft(draft)
+        if (localDraft && localDraft.savedAt > serverUpdatedAt) {
+          setAutoSaveStatus('saved')
+          setLastAutoSavedAt(localDraft.savedAt)
+        }
       } catch (error: any) {
         toast(error?.response?.data?.detail || '加载日记失败', 'error')
         navigate('/diaries')
       } finally {
+        hasInitializedDraftRef.current = true
         setIsInitializing(false)
       }
     }
     init()
-  }, [id, isEditMode, navigate])
+  }, [draftKey, id, isEditMode, navigate])
+
+  useEffect(() => {
+    if (isEditMode) return
+    const localDraft = readDraft(draftKey)
+    if (localDraft) {
+      setTitle(localDraft.title)
+      setContent(localDraft.content)
+      setContentHtml(localDraft.contentHtml)
+      setDiaryDate(localDraft.diaryDate)
+      setEmotionTags(localDraft.emotionTags)
+      setImportanceScore(localDraft.importanceScore)
+      setAutoSaveStatus('saved')
+      setLastAutoSavedAt(localDraft.savedAt)
+      lastAutoSaveSnapshotRef.current = serializeDraft(localDraft)
+    }
+    hasInitializedDraftRef.current = true
+  }, [draftKey, isEditMode])
+
+  useEffect(() => {
+    if (!hasInitializedDraftRef.current || isInitializing) return
+
+    const draft: DiaryDraft = {
+      title,
+      content,
+      contentHtml,
+      diaryDate,
+      emotionTags,
+      importanceScore,
+      savedAt: Date.now(),
+    }
+    const snapshot = serializeDraft(draft)
+    if (snapshot === lastAutoSaveSnapshotRef.current) return
+
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    setAutoSaveStatus('saving')
+    autoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        const savedAt = Date.now()
+        const draftToSave = { ...draft, savedAt }
+        localStorage.setItem(draftKey, JSON.stringify(draftToSave))
+
+        if (isEditMode && id && title.trim() && content.trim()) {
+          await diaryService.update(Number(id), {
+            title: title.trim(),
+            content: content.trim(),
+            content_html: contentHtml || undefined,
+            diary_date: diaryDate,
+            emotion_tags: emotionTags.length > 0 ? emotionTags : [],
+            importance_score: importanceScore,
+          })
+        }
+
+        lastAutoSaveSnapshotRef.current = serializeDraft(draftToSave)
+        setLastAutoSavedAt(savedAt)
+        setAutoSaveStatus('saved')
+      } catch (error) {
+        console.error('Auto save failed:', error)
+        setAutoSaveStatus('error')
+      }
+    }, 1200)
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    }
+  }, [content, contentHtml, diaryDate, draftKey, emotionTags, id, importanceScore, isEditMode, isInitializing, title])
 
   const loadDailyGuidance = useCallback(async () => {
     try {
@@ -131,6 +233,7 @@ export default function DiaryEditor() {
           emotion_tags: emotionTags.length > 0 ? emotionTags : [],
           importance_score: importanceScore,
         })
+        localStorage.removeItem(draftKey)
         toast(t('diary.updateSuccess'), 'success')
         navigate(`/diaries/${id}`)
       } else {
@@ -142,6 +245,7 @@ export default function DiaryEditor() {
           emotion_tags: emotionTags.length > 0 ? emotionTags : undefined,
           importance_score: importanceScore,
         })
+        localStorage.removeItem(draftKey)
         toast(t('diary.saveSuccess'), 'success')
         // 不再自动触发综合分析（萨提亚）
         // 时间轴事件由后端自动生成 + 异步精炼
@@ -171,6 +275,12 @@ export default function DiaryEditor() {
 
   const wordCount = content.length
   const importanceLabels = ['', '随意', '', '', '一般', '', '', '', '重要', '', '非常重要']
+  const autoSaveText = {
+    idle: '尚未自动保存',
+    saving: '正在保存…',
+    saved: lastAutoSavedAt ? `已自动保存 ${formatAutoSaveTime(lastAutoSavedAt)}` : '已自动保存',
+    error: '保存失败，请重试',
+  }[autoSaveStatus]
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(158deg, #f8f5ef 0%, #f2eef5 58%, #f5f2ee 100%)' }}>
@@ -208,6 +318,18 @@ export default function DiaryEditor() {
                 ? <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                 : isEditMode ? t('common.update') : t('common.save')}
             </button>
+          </div>
+          <div className="pb-2 text-center">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] ${
+              autoSaveStatus === 'error'
+                ? 'bg-red-50 text-red-400 border border-red-100'
+                : autoSaveStatus === 'saving'
+                  ? 'bg-amber-50 text-amber-500 border border-amber-100'
+                  : 'bg-white/70 text-stone-400 border border-stone-100'
+            }`}>
+              {autoSaveStatus === 'saving' && <span className="h-2 w-2 rounded-full border border-amber-300 border-t-transparent animate-spin" />}
+              {autoSaveText}
+            </span>
           </div>
         </div>
       </header>
@@ -379,4 +501,40 @@ export default function DiaryEditor() {
   )
 }
 
+function readDraft(key: string): DiaryDraft | null {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<DiaryDraft>
+    if (!parsed || typeof parsed !== 'object') return null
+    return {
+      title: parsed.title || '',
+      content: parsed.content || '',
+      contentHtml: parsed.contentHtml || '',
+      diaryDate: parsed.diaryDate || new Date().toISOString().split('T')[0],
+      emotionTags: Array.isArray(parsed.emotionTags) ? parsed.emotionTags : [],
+      importanceScore: Number(parsed.importanceScore) || 5,
+      savedAt: Number(parsed.savedAt) || 0,
+    }
+  } catch {
+    return null
+  }
+}
+
+function serializeDraft(draft: DiaryDraft): string {
+  return JSON.stringify({
+    title: draft.title,
+    content: draft.content,
+    contentHtml: draft.contentHtml,
+    diaryDate: draft.diaryDate,
+    emotionTags: draft.emotionTags,
+    importanceScore: draft.importanceScore,
+  })
+}
+
+function formatAutoSaveTime(timestamp: number): string {
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+}
 
