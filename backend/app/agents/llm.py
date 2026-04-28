@@ -2,10 +2,11 @@
 DeepSeek API 客户端
 简化版LLM调用，避免复杂的依赖
 """
+import asyncio
 import httpx
 import json
 import logging
-from typing import Dict, List, Optional, AsyncGenerator
+from typing import Any, Dict, List, Optional, AsyncGenerator
 from urllib.parse import urljoin
 
 from app.core.config import settings
@@ -30,6 +31,45 @@ class DeepSeekClient:
         if base.endswith("/v1"):
             base = base[:-3].rstrip("/")
         return urljoin(f"{base}/", "chat/completions")
+
+    def _extract_message_content(self, result: Dict[str, Any]) -> str:
+        """兼容 OpenAI-style 文本或多段 content，统一提取最终回复文本。"""
+        choices = result.get("choices") or []
+        if not choices:
+            return ""
+
+        message = choices[0].get("message") or {}
+        content = message.get("content")
+        if isinstance(content, str):
+            return content.strip()
+        if isinstance(content, list):
+            parts = []
+            for item in content:
+                if isinstance(item, str):
+                    parts.append(item)
+                elif isinstance(item, dict):
+                    text = item.get("text") or item.get("content")
+                    if text:
+                        parts.append(str(text))
+            return "".join(parts).strip()
+
+        return ""
+
+    def _empty_response_reason(self, result: Dict[str, Any]) -> str:
+        choices = result.get("choices") or []
+        if not choices:
+            return "no_choices"
+
+        choice = choices[0]
+        message = choice.get("message") or {}
+        finish_reason = choice.get("finish_reason") or "unknown"
+        refusal = message.get("refusal")
+        reasoning = message.get("reasoning_content")
+        return (
+            f"finish_reason={finish_reason}, "
+            f"has_reasoning={bool(reasoning)}, "
+            f"has_refusal={bool(refusal)}"
+        )
 
     async def chat(
         self,
@@ -68,26 +108,62 @@ class DeepSeekClient:
         if response_format == "json":
             payload["response_format"] = {"type": "json_object"}
 
-        async with httpx.AsyncClient(timeout=timeout_seconds) as client:
-            response = await client.post(
-                self._chat_completions_url(),
-                headers=headers,
-                json=payload
-            )
-            try:
-                response.raise_for_status()
-            except httpx.HTTPStatusError as exc:
-                logger.error(
-                    "DeepSeek API request failed status=%s url=%s body=%s",
-                    exc.response.status_code,
-                    exc.request.url,
-                    exc.response.text[:800],
-                )
-                raise
-            result = response.json()
-            self._log_prompt_cache_usage(result, stream=False)
+        retryable_statuses = {429, 500, 502, 503, 504}
+        max_attempts = 3
+        last_empty_reason = ""
 
-            return result["choices"][0]["message"]["content"]
+        async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    response = await client.post(
+                        self._chat_completions_url(),
+                        headers=headers,
+                        json=payload
+                    )
+                    try:
+                        response.raise_for_status()
+                    except httpx.HTTPStatusError as exc:
+                        logger.error(
+                            "DeepSeek API request failed status=%s url=%s body=%s",
+                            exc.response.status_code,
+                            exc.request.url,
+                            exc.response.text[:800],
+                        )
+                        if exc.response.status_code in retryable_statuses and attempt < max_attempts:
+                            await asyncio.sleep(0.7 * attempt)
+                            continue
+                        raise
+
+                    result = response.json()
+                    self._log_prompt_cache_usage(result, stream=False)
+                    content = self._extract_message_content(result)
+                    if content:
+                        return content
+
+                    last_empty_reason = self._empty_response_reason(result)
+                    logger.warning(
+                        "DeepSeek returned empty content attempt=%s/%s model=%s %s",
+                        attempt,
+                        max_attempts,
+                        payload["model"],
+                        last_empty_reason,
+                    )
+                    if attempt < max_attempts:
+                        await asyncio.sleep(0.6 * attempt)
+                        continue
+                except (httpx.TimeoutException, httpx.TransportError) as exc:
+                    if attempt < max_attempts:
+                        logger.warning(
+                            "DeepSeek request transport error attempt=%s/%s: %s",
+                            attempt,
+                            max_attempts,
+                            exc,
+                        )
+                        await asyncio.sleep(0.7 * attempt)
+                        continue
+                    raise
+
+        raise ValueError(f"DeepSeek返回为空（{last_empty_reason or 'unknown'}）")
 
     async def chat_with_system(
         self,

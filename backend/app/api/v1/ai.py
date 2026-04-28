@@ -575,12 +575,11 @@ async def analyze_diary(
         # 格式化结果
         result = agent_orchestrator.format_result(state)
 
-        # 如果有错误，返回特殊响应
+        # LLM 个别节点失败时保留降级结果，避免一次模型空返回把整次分析打成 500。
         if state.get("error"):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"分析失败: {state['error']}"
-            )
+            result.setdefault("metadata", {})
+            result["metadata"]["analysis_warning"] = state["error"]
+            result["metadata"]["degraded"] = True
 
         # 持久化分析结果：更新/创建时间轴事件 + 标记日记已分析
         try:
@@ -675,6 +674,13 @@ async def analyze_diary(
 
         return result
 
+    except HTTPException:
+        raise
+    except (httpx.HTTPStatusError, httpx.TimeoutException, httpx.TransportError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"AI服务暂时不可用，请稍后重试: {str(e)}"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

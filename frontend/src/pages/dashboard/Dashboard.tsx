@@ -216,7 +216,7 @@ export default function Dashboard() {
         onNavigate={navigate}
       />
 
-      <main className="mx-auto max-w-[1460px] space-y-6 px-4 py-6 sm:px-6 lg:px-10">
+      <main className="mx-auto max-w-[1460px] space-y-5 px-4 py-5 sm:px-6 lg:px-10">
         <DashboardHero
           displayName={displayName}
           stats={stats}
@@ -421,26 +421,26 @@ function DashboardHero({
   const secondaryEmotion = emotionStats[1]?.tag
 
   return (
-    <section className="relative overflow-hidden rounded-[34px] border border-white/70 bg-[#f9ded9] shadow-[0_22px_70px_rgba(171,103,88,0.16)]">
-      <img src="/dashboard-banner-bg_1.png" alt="" className="absolute inset-0 h-full w-full object-cover opacity-95" />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,249,244,0.94)_0%,rgba(255,241,234,0.80)_45%,rgba(252,218,222,0.40)_100%)]" />
-      <div className="relative grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.18fr_0.82fr] lg:p-10">
-        <div className="flex min-h-[245px] flex-col justify-center">
-          <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-white/70 px-3 py-1.5 text-xs font-semibold text-[#b76458] shadow-sm">
+    <section className="relative overflow-hidden rounded-[30px] border border-white/70 bg-[#f9ded9] shadow-[0_18px_54px_rgba(171,103,88,0.14)]">
+      <img src="/dashboard-hero.png" alt="" className="absolute inset-0 h-full w-full object-cover opacity-95" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,249,244,0.88)_0%,rgba(255,241,234,0.68)_44%,rgba(252,218,222,0.24)_100%)]" />
+      <div className="relative grid gap-6 p-5 sm:p-7 lg:grid-cols-[1.2fr_0.8fr] lg:p-8">
+        <div className="flex min-h-[218px] flex-col justify-center">
+          <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full bg-white/72 px-3 py-1.5 text-xs font-semibold text-[#b76458] shadow-sm">
             <Sparkles className="h-3.5 w-3.5" />
             {displayName}，今天也被好好接住
           </div>
-          <h1 className="max-w-3xl text-[34px] font-bold leading-tight tracking-normal text-stone-900 sm:text-[42px] lg:text-[48px]">
+          <h1 className="max-w-3xl text-[30px] font-bold leading-tight tracking-normal text-stone-900 sm:text-[38px] lg:text-[42px]">
             让每一个情绪，都被温柔看见
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-8 text-stone-600">
+          <p className="mt-3 max-w-2xl text-[15px] leading-7 text-stone-600">
             基于 AI 与萨提亚冰山模型，帮助你记录情绪、理解自己、看见成长。
             把零散的日常片段，慢慢沉淀成属于你的心理成长轨迹。
           </p>
-          <div className="mt-7 flex flex-wrap gap-4">
+          <div className="mt-6 flex flex-wrap gap-3">
             <button
               onClick={onWrite}
-              className="group inline-flex h-13 items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#f26f63,#e451a4)] px-7 text-base font-semibold text-white shadow-[0_14px_32px_rgba(226,81,113,0.28)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(226,81,113,0.34)] active:scale-[0.98]"
+              className="group inline-flex h-11 items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#f26f63,#e451a4)] px-6 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(226,81,113,0.26)] transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(226,81,113,0.32)] active:scale-[0.98]"
             >
               <PenLine className="h-5 w-5" />
               开始写日记
@@ -448,7 +448,7 @@ function DashboardHero({
             </button>
             <button
               onClick={onAnalysis}
-              className="inline-flex h-13 items-center gap-2 rounded-2xl border border-white/80 bg-white/84 px-7 text-base font-semibold text-stone-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-white active:scale-[0.98]"
+              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-white/80 bg-white/84 px-6 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-white active:scale-[0.98]"
             >
               <Sparkles className="h-5 w-5 text-[#996ff0]" />
               查看 AI 分析
@@ -457,29 +457,44 @@ function DashboardHero({
         </div>
 
         <div className="flex items-center justify-center lg:justify-end">
-          <div className="w-full max-w-[430px] rounded-[30px] border border-white/85 bg-white/82 p-6 shadow-[0_22px_60px_rgba(121,85,84,0.16)] backdrop-blur-xl">
-            <div className="mb-4 flex items-center gap-2 text-sm font-bold text-stone-800">
-              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#f5edff] text-[#9369df]">
+          <div className="w-full max-w-[385px] rounded-[28px] border border-white/85 bg-white/80 p-5 shadow-[0_18px_48px_rgba(121,85,84,0.14)] backdrop-blur-xl">
+            <div className="mb-3 flex items-center gap-2 text-sm font-bold text-stone-800">
+              <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-[#f5edff] text-[#9369df]">
                 <Sparkles className="h-4.5 w-4.5" />
               </span>
               AI 今日观察
             </div>
-            <p className="text-lg font-semibold leading-8 text-stone-800">
+            <p className="text-base font-semibold leading-7 text-stone-800">
               {observation?.summary || `你近期的情绪以「${readableTop}」${secondaryEmotion ? `和「${secondaryEmotion}」` : ''}为主，整体状态${stats.trend === 'descending' ? '有些起伏' : '正在慢慢稳定'}。`}
             </p>
-            <div className="mt-4 rounded-2xl bg-[#faf1ff] px-4 py-3 text-xs font-medium leading-6 text-[#9d6bd2]">
+            <div className="mt-3 rounded-2xl bg-[#faf1ff] px-4 py-3 text-xs font-medium leading-6 text-[#9d6bd2]">
               {observation?.encouragement || `${stats.riskDesc}，继续记录，情绪会越来越有迹可循。`}
             </div>
-            <div className="mt-5 h-16 overflow-hidden rounded-2xl bg-[linear-gradient(180deg,#fff9fb,#fff4ed)] px-4 py-3">
-              <div className="flex h-full items-end gap-2">
-                {[34, 48, 40, 58, 46, 64, 52, 70, 60, 78, 68, 83].map((height, index) => (
-                  <span
-                    key={index}
-                    className="flex-1 rounded-full bg-[linear-gradient(180deg,#f2a0d9,#b99cf1)] opacity-80"
-                    style={{ height: `${height}%` }}
-                  />
-                ))}
-              </div>
+            <div className="mt-4 h-14 overflow-hidden rounded-2xl bg-[linear-gradient(180deg,#fff9fb,#fff4ed)] px-3 py-2">
+              <svg viewBox="0 0 320 56" className="h-full w-full" role="img" aria-label="近期情绪波形趋势">
+                <defs>
+                  <linearGradient id="heroWaveStroke" x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0%" stopColor="#b99cf1" />
+                    <stop offset="52%" stopColor="#e99ed9" />
+                    <stop offset="100%" stopColor="#f39ab4" />
+                  </linearGradient>
+                  <linearGradient id="heroWaveFill" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#e99ed9" stopOpacity="0.20" />
+                    <stop offset="100%" stopColor="#f39ab4" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M4 35 C28 35 31 23 54 23 C75 23 78 40 99 40 C120 40 122 18 143 18 C164 18 166 34 186 34 C206 34 208 26 226 26 C247 26 249 12 270 12 C291 12 294 27 316 27"
+                  fill="none"
+                  stroke="url(#heroWaveStroke)"
+                  strokeLinecap="round"
+                  strokeWidth="4"
+                />
+                <path
+                  d="M4 35 C28 35 31 23 54 23 C75 23 78 40 99 40 C120 40 122 18 143 18 C164 18 166 34 186 34 C206 34 208 26 226 26 C247 26 249 12 270 12 C291 12 294 27 316 27 L316 56 L4 56 Z"
+                  fill="url(#heroWaveFill)"
+                />
+              </svg>
             </div>
           </div>
         </div>
@@ -525,15 +540,15 @@ function OverviewStatCards({ stats, t }: { stats: DashboardStats; t: ReturnType<
       {statCards.map((item) => (
         <article
           key={item.label}
-          className={`group rounded-[24px] border bg-gradient-to-br p-5 shadow-[0_14px_40px_rgba(115,84,69,0.06)] transition-all hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(115,84,69,0.10)] ${item.className}`}
+          className={`group rounded-[22px] border bg-gradient-to-br p-4 shadow-[0_12px_34px_rgba(115,84,69,0.055)] transition-all hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(115,84,69,0.10)] ${item.className}`}
         >
-          <div className="flex items-center gap-4">
-            <span className="flex h-13 w-13 items-center justify-center rounded-2xl bg-white/75 shadow-sm [&_svg]:h-5 [&_svg]:w-5">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/75 shadow-sm [&_svg]:h-5 [&_svg]:w-5">
               {item.icon}
             </span>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-stone-500">{item.label}</p>
-              <p className="mt-1 truncate text-2xl font-bold tracking-normal">{item.value}</p>
+              <p className="mt-0.5 truncate text-xl font-bold tracking-normal">{item.value}</p>
               <p className="mt-1 truncate text-xs text-stone-400">{item.desc}</p>
             </div>
           </div>
@@ -580,21 +595,21 @@ function PrimaryActionCards({ onNavigate }: { onNavigate: (path: string) => void
         <button
           key={item.title}
           onClick={() => onNavigate(item.path)}
-          className={`group min-h-[118px] rounded-[24px] border p-5 text-left shadow-[0_14px_40px_rgba(115,84,69,0.06)] transition-all hover:-translate-y-1 hover:shadow-[0_18px_46px_rgba(115,84,69,0.12)] ${item.className}`}
+          className={`group min-h-[98px] rounded-[22px] border p-4 text-left shadow-[0_12px_34px_rgba(115,84,69,0.055)] transition-all hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(115,84,69,0.12)] ${item.className}`}
         >
           <div className="flex items-center justify-between gap-4">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/76 shadow-sm [&_svg]:h-7 [&_svg]:w-7">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/76 shadow-sm [&_svg]:h-6 [&_svg]:w-6">
               {item.icon}
             </span>
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/70 text-stone-400 transition-all group-hover:translate-x-1 group-hover:text-current">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/70 text-stone-400 transition-all group-hover:translate-x-1 group-hover:text-current">
               <ChevronRight className="h-5 w-5" />
             </span>
           </div>
-          <h2 className="mt-4 text-xl font-bold text-stone-800">{item.title}</h2>
+          <h2 className="mt-3 text-lg font-bold text-stone-800">{item.title}</h2>
           <p className="mt-1 text-sm text-stone-500">{item.desc}</p>
         </button>
       ))}
-      <div className="grid gap-3 rounded-[24px] border border-[#eadfd8] bg-white/64 p-3 shadow-[0_14px_40px_rgba(115,84,69,0.05)] sm:grid-cols-3 lg:grid-cols-1">
+      <div className="grid gap-2 rounded-[22px] border border-[#eadfd8] bg-white/64 p-3 shadow-[0_12px_34px_rgba(115,84,69,0.05)] sm:grid-cols-3 lg:grid-cols-1">
         {secondary.map((item) => (
           <button
             key={item.label}

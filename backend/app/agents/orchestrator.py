@@ -169,26 +169,60 @@ class AgentOrchestrator:
                 run["error"] = error
             agent_runs.append(run)
 
+        def _fallback_layer(step_code: str) -> Dict:
+            fallback_map = {
+                "A": {
+                    "patterns": [],
+                    "summary": "这次行为层模型输出不完整，系统暂时只保留证据片段，建议稍后重新生成以获得更细的行为模式。",
+                },
+                "B": {
+                    "emotion_flow": [],
+                    "turning_points": [],
+                    "summary": "这次情绪层模型输出不完整，系统会先以已有日记标签和证据作为参考，避免编造结论。",
+                },
+                "C": {
+                    "thought_patterns": [],
+                    "summary": "这次认知层模型输出不完整，系统暂不强行推断你的想法，只保留可追溯证据。",
+                },
+                "D": {
+                    "core_beliefs": [],
+                    "self_narrative": "",
+                    "summary": "这次信念层模型输出不完整，系统会保持保守，不对深层信念做过度判断。",
+                },
+                "E": {
+                    "yearnings": [],
+                    "life_energy": "继续记录，让真实感受慢慢浮现。",
+                    "summary": "这次渴望层模型输出不完整，系统暂以温和陪伴为主，避免做没有证据的深层解读。",
+                },
+            }
+            return fallback_map.get(step_code, {"summary": "模型输出不完整，已降级处理。"})
+
         async def _call_json(prompt: str, step_code: str, step_name: str, max_tokens: int = 1600) -> Dict:
             t0 = time.time()
-            try:
-                raw = await deepseek_client.chat_with_system(
-                    system_prompt="你是萨提亚冰山模型专家。只输出JSON，不要附加解释。",
-                    user_prompt=prompt,
-                    temperature=0.4,
-                    response_format="json",
-                    max_tokens=max_tokens,
-                    timeout_seconds=45.0,
-                )
-                from app.api.v1.ai import _safe_parse_json
-                result = _safe_parse_json(raw)
-                _record(step_code, step_name, True, t0)
-                print(f"[Iceberg {step_code}] {step_name} 完成 ({int((time.time()-t0)*1000)}ms)")
-                return result
-            except Exception as e:
-                _record(step_code, step_name, False, t0, str(e))
-                print(f"[Iceberg {step_code}] {step_name} 失败: {e}")
-                return {}
+            last_error = ""
+            for attempt in range(1, 3):
+                try:
+                    retry_hint = "" if attempt == 1 else "\n\n上一次输出为空或不是合法 JSON。请严格只返回一个 JSON 对象，不要返回空内容。"
+                    raw = await deepseek_client.chat_with_system(
+                        system_prompt="你是萨提亚冰山模型专家。只输出JSON，不要附加解释。",
+                        user_prompt=prompt + retry_hint,
+                        temperature=0.3,
+                        response_format="json",
+                        max_tokens=max_tokens,
+                        timeout_seconds=45.0,
+                    )
+                    from app.api.v1.ai import _safe_parse_json
+                    result = _safe_parse_json(raw)
+                    _record(step_code, step_name, True, t0)
+                    print(f"[Iceberg {step_code}] {step_name} 完成 ({int((time.time()-t0)*1000)}ms)")
+                    return result
+                except Exception as e:
+                    last_error = str(e)
+                    print(f"[Iceberg {step_code}] {step_name} 第{attempt}次失败: {e}")
+
+            _record(step_code, step_name, False, t0, last_error)
+            print(f"[Iceberg {step_code}] {step_name} 失败，已降级: {last_error}")
+            return _fallback_layer(step_code)
 
         print(f"\n{'='*60}")
         print(f"印记 - 冰山综合分析")
