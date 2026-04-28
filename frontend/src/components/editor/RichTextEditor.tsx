@@ -669,6 +669,18 @@ function SlashCommandPlugin({
       return
     }
 
+    if (item.kind === 'bullet') {
+      editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)
+      closeMenu()
+      return
+    }
+
+    if (item.kind === 'numbered') {
+      editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)
+      closeMenu()
+      return
+    }
+
     editor.update(() => {
       const selection = $getSelection()
       if (!$isRangeSelection(selection)) return
@@ -689,14 +701,6 @@ function SlashCommandPlugin({
         $setBlocksType(selection, () => $createCodeNode())
       }
     })
-
-    if (item.kind === 'bullet') {
-      editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)
-    }
-
-    if (item.kind === 'numbered') {
-      editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)
-    }
 
     closeMenu()
   }, [closeMenu, editor, onOpenImagePicker, removeSlashQuery])
@@ -932,6 +936,7 @@ const theme = {
     italic: 'italic',
     underline: 'underline',
     strikethrough: 'line-through',
+    code: 'rounded-md bg-stone-100 px-1.5 py-0.5 font-mono text-[0.92em] text-rose-600',
   },
   paragraph: 'mb-1',
   heading: {
@@ -943,6 +948,15 @@ const theme = {
     h6: 'text-sm font-medium text-stone-600 mt-1.5 mb-1',
   },
   quote: 'border-l-4 border-rose-200 pl-3 text-stone-500 italic my-2',
+  list: {
+    ul: 'my-2 ml-5 list-disc space-y-1 marker:text-rose-300',
+    ol: 'my-2 ml-5 list-decimal space-y-1 marker:text-stone-400',
+    listitem: 'pl-1 leading-7 text-stone-600',
+    nested: {
+      listitem: 'list-none',
+    },
+  },
+  code: 'my-3 block rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 font-mono text-[13px] leading-6 text-stone-700 whitespace-pre-wrap',
 }
 
 function ErrorBoundary({ children }: { children: React.ReactNode }) {
