@@ -115,6 +115,206 @@ async def list_diaries(
     )
 
 
+NEGATIVE_DASHBOARD_EMOTIONS = {
+    "焦虑", "压力", "低落", "消沉", "疲惫", "难过", "紧张", "担忧",
+    "烦躁", "崩溃", "痛苦", "失落", "孤独", "无助", "恐惧", "悲伤",
+}
+
+
+def _normalize_dashboard_emotion(tag: str | None) -> str:
+    return (tag or "").strip().lower()
+
+
+def _dashboard_preview(text: str | None, max_len: int = 96) -> str:
+    normalized = " ".join((text or "").split())
+    if not normalized:
+        return "这篇日记还没有正文摘要。"
+    return normalized[:max_len] + ("..." if len(normalized) > max_len else "")
+
+
+def _dashboard_emotion_label(tag: str) -> str:
+    labels = {
+        "achievement": "成就感",
+        "satisfied": "满足",
+        "happy": "开心",
+        "calm": "平静",
+        "anxious": "焦虑",
+        "worried": "担忧",
+        "tired": "疲惫",
+        "sad": "低落",
+    }
+    return labels.get(tag, tag or "平稳")
+
+
+@router.get("/dashboard/insights", summary="获取首页仪表盘洞察")
+async def get_dashboard_insights(
+    days: int = Query(30, ge=7, le=180, description="统计窗口天数"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    为首页仪表盘提供结构化洞察数据。
+
+    该接口不在每次加载时调用大模型，而是基于用户真实日记数据生成可解释的
+    首页观察：记录趋势、主要情绪、风险提示、情绪分布、最近日记分析入口。
+    单篇深度分析仍复用 /api/v1/ai/analyze，可结合指定日记与历史窗口完成。
+    """
+    today = date.today()
+    start_date = today - timedelta(days=days - 1)
+    recent_start = today - timedelta(days=(days // 2) - 1)
+    previous_start = start_date
+    previous_end = recent_start - timedelta(days=1)
+
+    result = await db.execute(
+        select(Diary)
+        .where(
+            and_(
+                Diary.user_id == current_user.id,
+                Diary.diary_date >= start_date,
+                Diary.diary_date <= today,
+            )
+        )
+        .order_by(desc(Diary.diary_date), desc(Diary.created_at))
+        .limit(100)
+    )
+    diaries = list(result.scalars().all())
+
+    this_month = len([
+        d for d in diaries
+        if d.diary_date and d.diary_date.year == today.year and d.diary_date.month == today.month
+    ])
+    recent_half = len([d for d in diaries if d.diary_date and d.diary_date >= recent_start])
+    previous_half = len([
+        d for d in diaries
+        if d.diary_date and previous_start <= d.diary_date <= previous_end
+    ])
+    if previous_half == 0:
+        trend_delta = 100 if recent_half > 0 else 0
+    else:
+        trend_delta = round((recent_half - previous_half) / previous_half * 100)
+
+    if trend_delta > 12:
+        trend = "ascending"
+        trend_label = "整体回升"
+    elif trend_delta < -12:
+        trend = "descending"
+        trend_label = "略有回落"
+    else:
+        trend = "stable"
+        trend_label = "比较稳定"
+
+    emotion_counts: dict[str, int] = {}
+    for diary in diaries:
+        for tag in diary.emotion_tags or []:
+            normalized = _normalize_dashboard_emotion(tag)
+            if not normalized:
+                continue
+            emotion_counts[normalized] = emotion_counts.get(normalized, 0) + 1
+
+    total_emotion_tags = sum(emotion_counts.values())
+    sorted_emotions = sorted(emotion_counts.items(), key=lambda item: item[1], reverse=True)
+    top_emotion, top_emotion_count = sorted_emotions[0] if sorted_emotions else ("暂无", 0)
+    negative_count = sum(
+        count for tag, count in emotion_counts.items()
+        if any(key in tag for key in NEGATIVE_DASHBOARD_EMOTIONS)
+    )
+    negative_ratio = negative_count / total_emotion_tags if total_emotion_tags else 0
+
+    if negative_ratio > 0.35:
+        risk_label = "需要关注"
+        risk_desc = "负向情绪占比偏高，建议留意压力来源与睡眠节奏"
+    elif trend == "descending":
+        risk_label = "轻度波动"
+        risk_desc = "近期记录节奏略有下降，可以用一句话日记先接住状态"
+    else:
+        risk_label = "状态平稳"
+        risk_desc = "继续保持记录与睡眠节奏"
+
+    emotion_stats = [
+        {
+            "tag": tag,
+            "label": _dashboard_emotion_label(tag),
+            "count": count,
+            "percentage": round(count / total_emotion_tags * 100) if total_emotion_tags else 0,
+        }
+        for tag, count in sorted_emotions
+    ]
+
+    top_label = _dashboard_emotion_label(top_emotion)
+    second_label = _dashboard_emotion_label(sorted_emotions[1][0]) if len(sorted_emotions) > 1 else ""
+    if not diaries:
+        observation_summary = "你还没有留下近期记录。可以从一句话开始，让今天的情绪有一个安放的位置。"
+        encouragement = "第一篇日记不需要完整，只要真实就很好。"
+    elif top_emotion == "暂无":
+        observation_summary = "最近的记录正在积累中，情绪模式还需要更多样本才能更清晰。"
+        encouragement = "继续记录几天后，映记会更准确地看见你的变化。"
+    else:
+        paired = f"和「{second_label}」" if second_label else ""
+        observation_summary = f"你近期的情绪以「{top_label}」{paired}为主，整体状态{('有些起伏' if trend == 'descending' else '较为稳定')}。"
+        encouragement = f"{risk_desc}，继续记录，情绪会越来越有迹可循。"
+
+    insights = [
+        f"近期情绪以「{top_label if top_emotion != '暂无' else '平稳'}」为主，记录了 {len(diaries)} 篇日记。",
+        "记录频率在近期有所回升，说明你正在重新建立和自己对话的节奏。"
+        if trend == "ascending"
+        else "近期记录节奏略有下降，可以先用一句话完成轻量回顾。"
+        if trend == "descending"
+        else "记录节奏比较稳定，适合继续观察重复出现的情绪主题。",
+        "负向情绪占比偏高，建议关注压力来源、睡眠和可求助资源。"
+        if negative_ratio > 0.35
+        else "你的情绪恢复能力较好，能够从轻微压力中慢慢调整回来。",
+        "建议保持规律记录与睡眠节奏，让成长轨迹持续变得清晰。",
+    ]
+
+    recent_diaries = [
+        {
+            "id": diary.id,
+            "title": diary.title or "无标题",
+            "diary_date": diary.diary_date.isoformat() if diary.diary_date else "",
+            "emotion_tags": diary.emotion_tags or [],
+            "summary": _dashboard_preview(diary.content),
+            "word_count": diary.word_count or 0,
+            "importance_score": diary.importance_score or 5,
+            "is_analyzed": bool(diary.is_analyzed),
+            "analysis_path": f"/analysis/{diary.id}",
+        }
+        for diary in diaries[:6]
+    ]
+
+    return {
+        "window_days": days,
+        "generated_at": today.isoformat(),
+        "stats": {
+            "total_diaries": len(diaries),
+            "last_days_count": len(diaries),
+            "this_month_count": this_month,
+            "top_emotion": top_emotion,
+            "top_emotion_label": top_label if top_emotion != "暂无" else "待记录",
+            "top_emotion_count": top_emotion_count,
+            "trend": trend,
+            "trend_label": trend_label,
+            "trend_delta": trend_delta,
+            "risk_label": risk_label,
+            "risk_desc": risk_desc,
+            "negative_ratio": round(negative_ratio, 3),
+        },
+        "ai_observation": {
+            "title": "AI 今日观察",
+            "summary": observation_summary,
+            "encouragement": encouragement,
+            "source": "rule_based_dashboard_insight",
+        },
+        "emotion_stats": emotion_stats,
+        "insights": insights,
+        "recent_diaries": recent_diaries,
+        "analysis_entry": {
+            "overall_path": "/analysis",
+            "single_diary_path_template": "/analysis/{diary_id}",
+            "description": "单篇日记分析会以该日记为锚点，并结合用户历史记录窗口进行综合分析。",
+        },
+    }
+
+
 @router.get("/{diary_id}", response_model=DiaryResponse, summary="获取日记详情")
 async def get_diary(
     diary_id: int,

@@ -9,6 +9,7 @@ import type {
   EmotionStats,
   TerrainResponse,
   GrowthDailyInsight,
+  DashboardInsights,
 } from '@/types/diary'
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
@@ -81,6 +82,14 @@ export const diaryService = {
   // 获取情绪统计
   getEmotionStats: async (days: number = 30): Promise<EmotionStats[]> => {
     const response = await api.get<EmotionStats[]>('/api/v1/diaries/stats/emotions', {
+      params: { days },
+    })
+    return response.data
+  },
+
+  // 获取首页仪表盘洞察
+  getDashboardInsights: async (days: number = 30): Promise<DashboardInsights> => {
+    const response = await api.get<DashboardInsights>('/api/v1/diaries/dashboard/insights', {
       params: { days },
     })
     return response.data

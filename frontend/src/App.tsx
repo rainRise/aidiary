@@ -18,6 +18,7 @@ const DiaryEditor = lazy(() => import('@/pages/diaries/DiaryEditor'))
 const Dashboard = lazy(() => import('@/pages/dashboard/Dashboard'))
 const GrowthCenter = lazy(() => import('@/pages/timeline/Timeline'))
 const AnalysisOverview = lazy(() => import('@/pages/analysis/AnalysisOverview'))
+const AnalysisResult = lazy(() => import('@/pages/analysis/AnalysisResult'))
 const ProfileSettings = lazy(() => import('@/pages/settings/ProfileSettings'))
 const PrivacyPolicy = lazy(() => import('@/pages/legal/PrivacyPolicy'))
 const TermsOfService = lazy(() => import('@/pages/legal/TermsOfService'))
@@ -238,7 +239,11 @@ function AppRoutes() {
           />
           <Route
             path="/analysis/:id"
-            element={<Navigate to="/analysis" replace />}
+            element={
+              <PrivateRoute>
+                <AnalysisResult />
+              </PrivateRoute>
+            }
           />
           <Route
             path="/settings"

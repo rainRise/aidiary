@@ -119,6 +119,58 @@ export interface TerrainResponse {
   meta: TerrainMeta
 }
 
+export interface DashboardInsightEmotion {
+  tag: string
+  label: string
+  count: number
+  percentage: number
+}
+
+export interface DashboardInsightDiary {
+  id: number
+  title: string
+  diary_date: string
+  emotion_tags: EmotionTag[]
+  summary: string
+  word_count: number
+  importance_score: number
+  is_analyzed: boolean
+  analysis_path: string
+}
+
+export interface DashboardInsights {
+  window_days: number
+  generated_at: string
+  stats: {
+    total_diaries: number
+    last_days_count: number
+    this_month_count: number
+    top_emotion: string
+    top_emotion_label: string
+    top_emotion_count: number
+    trend: 'ascending' | 'descending' | 'stable' | string
+    trend_label: string
+    trend_delta: number
+    risk_label: string
+    risk_desc: string
+    negative_ratio: number
+  }
+  ai_observation: {
+    title: string
+    summary: string
+    encouragement: string
+    source: string
+  }
+  emotion_stats: DashboardInsightEmotion[]
+  insights: string[]
+  recent_diaries: DashboardInsightDiary[]
+  analysis_entry: {
+    overall_path: string
+    single_diary_path_template: string
+    description: string
+  }
+}
+
 export interface GrowthDailyInsight {
   date: string
   primary_emotion?: string
