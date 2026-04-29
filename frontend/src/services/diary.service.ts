@@ -10,6 +10,7 @@ import type {
   TerrainResponse,
   GrowthDailyInsight,
   DashboardInsights,
+  CareProgress,
 } from '@/types/diary'
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
@@ -92,6 +93,18 @@ export const diaryService = {
     const response = await api.get<DashboardInsights>('/api/v1/diaries/dashboard/insights', {
       params: { days },
     })
+    return response.data
+  },
+
+  // 获取连续照顾与心灯护盾进度
+  getCareProgress: async (): Promise<CareProgress> => {
+    const response = await api.get<CareProgress>('/api/v1/diaries/care/progress')
+    return response.data
+  },
+
+  // 主动选择“今天不想写”，也作为一次有效照顾行为落库
+  createRestCareRecord: async (): Promise<{ created: boolean; diary_id: number; message: string }> => {
+    const response = await api.post<{ created: boolean; diary_id: number; message: string }>('/api/v1/diaries/care/rest')
     return response.data
   },
 

@@ -146,6 +146,150 @@ def _dashboard_emotion_label(tag: str) -> str:
     return labels.get(tag, tag or "平稳")
 
 
+@router.get("/care/progress", summary="获取连续照顾与心灯护盾进度")
+async def get_care_progress(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    基于真实日记日期计算轻记录进度。
+
+    当前版本不把“心灯护盾”当心理分数，只作为连续照顾的漏记保护展示：
+    - ACTIVE：当天有日记/轻记录
+    - SHIELDED：当天没有记录，但可由护盾保护连续照顾
+    - MISSED：当天没有记录且没有护盾可用，连续照顾中断
+
+    护盾获取/消耗的持久化表后续再接入；这里先用后端统一返回的可替换余额。
+    """
+    today = date.today()
+    lookback_start = today - timedelta(days=365)
+    week_start = today - timedelta(days=today.weekday())
+    weekly_goal = 3
+    base_shield_balance = 2
+
+    result = await db.execute(
+        select(Diary.diary_date)
+        .where(
+            and_(
+                Diary.user_id == current_user.id,
+                Diary.diary_date >= lookback_start,
+                Diary.diary_date <= today,
+            )
+        )
+        .order_by(desc(Diary.diary_date))
+    )
+    active_dates = {row[0] for row in result.all() if row[0] is not None}
+
+    if not active_dates:
+        return {
+            "active_days": 0,
+            "protected_streak": 0,
+            "shield_balance": base_shield_balance,
+            "shielded_days": 0,
+            "weekly_goal": weekly_goal,
+            "weekly_active_count": 0,
+            "weekly_completed": False,
+            "week_start": str(week_start),
+            "today_status": "PENDING",
+            "recent_statuses": [{"date": str(today), "status": "PENDING"}],
+            "message": "先点亮第一盏心灯就好，5 秒也算一次照顾。",
+        }
+
+    shield_remaining = base_shield_balance
+    protected_streak = 0
+    shielded_days = 0
+    cursor = today if today in active_dates else today - timedelta(days=1)
+    day_statuses = []
+
+    while cursor >= lookback_start:
+        if cursor in active_dates:
+            protected_streak += 1
+            day_statuses.append({"date": str(cursor), "status": "ACTIVE"})
+        elif shield_remaining > 0:
+            protected_streak += 1
+            shielded_days += 1
+            shield_remaining -= 1
+            day_statuses.append({"date": str(cursor), "status": "SHIELDED"})
+        else:
+            day_statuses.append({"date": str(cursor), "status": "MISSED"})
+            break
+        cursor -= timedelta(days=1)
+
+    weekly_active_count = len([d for d in active_dates if d >= week_start])
+    active_days = len(active_dates)
+
+    if active_days == 0:
+        message = "先点亮第一盏心灯就好，5 秒也算一次照顾。"
+    elif shielded_days > 0:
+        message = f"已用 {shielded_days} 个心灯护盾保护连续照顾，偶尔停一下也没关系。"
+    else:
+        message = "这段连续照顾都来自真实记录，保持轻轻地回来就好。"
+
+    return {
+        "active_days": active_days,
+        "protected_streak": protected_streak,
+        "shield_balance": shield_remaining,
+        "shielded_days": shielded_days,
+        "weekly_goal": weekly_goal,
+        "weekly_active_count": weekly_active_count,
+        "weekly_completed": weekly_active_count >= weekly_goal,
+        "week_start": str(week_start),
+        "today_status": "ACTIVE" if today in active_dates else "PENDING",
+        "recent_statuses": day_statuses[:14],
+        "message": message,
+    }
+
+
+@router.post("/care/rest", summary="记录今天不想写")
+async def create_rest_care_record(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    记录一次“今天不想写”的有效照顾行为。
+
+    心理日记里，主动承认今天不想表达也属于状态采样。这里用一条轻量日记落库，
+    避免前端只做提示、后端连续照顾统计却没有真实依据。
+    """
+    today = date.today()
+    result = await db.execute(
+        select(Diary)
+        .where(
+            and_(
+                Diary.user_id == current_user.id,
+                Diary.diary_date == today,
+            )
+        )
+        .order_by(desc(Diary.created_at))
+    )
+    existing_diary = result.scalars().first()
+    if existing_diary:
+        return {
+            "created": False,
+            "diary_id": existing_diary.id,
+            "message": "今天已经有记录了，这也算一次有效照顾。",
+        }
+
+    rest_content = "今天不想写，也是一种照顾自己。"
+    diary = await diary_service.create_diary(
+        db,
+        current_user.id,
+        DiaryCreate(
+            title="今天不想写",
+            content=rest_content,
+            content_html=f"<p>{rest_content}</p>",
+            diary_date=today,
+            emotion_tags=["rest"],
+            importance_score=5,
+        ),
+    )
+    return {
+        "created": True,
+        "diary_id": diary.id,
+        "message": "已记录“今天不想写”。你可以到这里为止。",
+    }
+
+
 @router.get("/dashboard/insights", summary="获取首页仪表盘洞察")
 async def get_dashboard_insights(
     days: int = Query(30, ge=7, le=180, description="统计窗口天数"),

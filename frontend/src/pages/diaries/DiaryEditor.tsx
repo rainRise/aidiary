@@ -10,6 +10,7 @@ import RichTextEditor from '@/components/editor/RichTextEditor'
 import { aiService } from '@/services/ai.service'
 import { diaryService } from '@/services/diary.service'
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
+import type { CareProgress } from '@/types/diary'
 
 const PRESET_EMOTIONS_KEYS = [
   'happy', 'calm', 'anxious', 'achievement', 'satisfied',
@@ -112,6 +113,7 @@ export default function DiaryEditor() {
   const [selectedReflection, setSelectedReflection] = useState('')
   const [lightReward, setLightReward] = useState<{ points: number; card: string } | null>(null)
   const [savedLightDiaryId, setSavedLightDiaryId] = useState<number | null>(null)
+  const [careProgress, setCareProgress] = useState<CareProgress | null>(null)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastAutoSaveSnapshotRef = useRef('')
   const hasInitializedDraftRef = useRef(false)
@@ -243,6 +245,19 @@ export default function DiaryEditor() {
     void loadDailyGuidance()
   }, [loadDailyGuidance])
 
+  const loadCareProgress = useCallback(async () => {
+    try {
+      const progress = await diaryService.getCareProgress()
+      setCareProgress(progress)
+    } catch {
+      setCareProgress(null)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isEditMode) void loadCareProgress()
+  }, [isEditMode, loadCareProgress])
+
   const toggleEmotionTag = (tag: string) => {
     setEmotionTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
@@ -284,12 +299,26 @@ export default function DiaryEditor() {
         })
         setSavedLightDiaryId(diary.id)
         localStorage.removeItem(draftKey)
+        void loadCareProgress()
       }
       setIsLightCompleted(true)
       setLightReward({ points: oneLineText.trim() || selectedReflection ? 10 : 5, card: selectedReflectionLabel || selectedCheckinEmotion.label })
       toast('今日心灯已点亮。你可以到这里为止，也可以补充几句话。', 'success')
     } catch (error: any) {
       toast(error.message || t('diary.saveFailed'), 'error')
+    }
+  }
+
+  const handleRestCareRecord = async () => {
+    try {
+      const result = await diaryService.createRestCareRecord()
+      setSavedLightDiaryId(result.diary_id)
+      setIsLightCompleted(true)
+      localStorage.removeItem(draftKey)
+      void loadCareProgress()
+      toast(result.message || '已记录，今天到这里也很好。', 'success')
+    } catch (error: any) {
+      toast(error.message || '记录失败，请稍后重试', 'error')
     }
   }
 
@@ -440,13 +469,13 @@ export default function DiaryEditor() {
                 }}
               />
 
-              <CareProgressPanel />
+              <CareProgressPanel progress={careProgress} />
 
               <DailyReflectionPrompt
                 question="今天有没有一个瞬间，让你觉得自己被消耗了？"
                 showAiQuestion={showAiQuestion}
                 selectedReflection={selectedReflection}
-                onSkip={() => toast('已跳过，今天到这里也很好。', 'success')}
+                onSkip={handleRestCareRecord}
                 onWriteOneLine={() => {
                   setShowOneLine(true)
                   setTimeout(() => document.getElementById('light-one-line')?.focus(), 50)
@@ -782,33 +811,41 @@ function ChoicePill({ active, onClick, children }: { active: boolean; onClick: (
   )
 }
 
-function CareProgressPanel() {
+function CareProgressPanel({ progress }: { progress: CareProgress | null }) {
+  const protectedStreak = progress?.protected_streak ?? 0
+  const activeDays = progress?.active_days ?? 0
+  const shieldedDays = progress?.shielded_days ?? 0
+  const shieldBalance = progress?.shield_balance ?? 0
+  const weeklyActive = progress?.weekly_active_count ?? 0
+  const weeklyGoal = progress?.weekly_goal ?? 3
+
   return (
     <section className="space-y-3">
       <div className="grid gap-4 sm:grid-cols-3">
         <ProgressCard
           icon={<Sprout />}
           label="连续照顾自己"
-          value="12 天"
-          desc="其中 12 天真实记录，0 天由护盾保护"
+          value={`${protectedStreak} 天`}
+          desc={`其中 ${activeDays} 天真实记录，${shieldedDays} 天由护盾保护`}
         />
         <ProgressCard
           icon={<ShieldCheck />}
           label="心灯护盾"
-          value="2 个"
+          value={`${shieldBalance} 个`}
           desc="漏记一天时自动保护连续照顾"
         />
         <ProgressCard
           icon={<Target />}
           label="本周目标"
-          value="3 / 3 次轻记录"
-          desc="一周完成 3 次就很好"
+          value={`${Math.min(weeklyActive, weeklyGoal)} / ${weeklyGoal} 次轻记录`}
+          desc={progress?.weekly_completed ? '本周目标已完成' : '一周完成 3 次就很好'}
         />
       </div>
       <div className="rounded-3xl border border-[#eadfd8] bg-white/62 px-5 py-4 text-sm leading-7 text-stone-500 shadow-[0_10px_30px_rgba(122,83,73,0.06)]">
         <span className="font-semibold text-stone-700">心灯护盾不是心理分数。</span>
         它只是断签保护：如果某天你完全没有打开或操作，系统可消耗 1 个护盾，帮你保留连续照顾天数，减少“断了就算失败”的挫败感。
         主动选择“今天不想写”也算一次有效照顾，不会消耗护盾。
+        {progress?.message && <span className="mt-1 block text-[#9d756b]">{progress.message}</span>}
       </div>
     </section>
   )
@@ -862,7 +899,7 @@ function DailyReflectionPrompt({
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
-          <PromptButton icon={<ChevronRight />} label="跳过" onClick={onSkip} />
+          <PromptButton icon={<ChevronRight />} label="今天不想写" onClick={onSkip} />
           <PromptButton icon={<PenLine />} label="写一句" onClick={onWriteOneLine} active />
           <PromptButton icon={<Mic />} label="语音说说" onClick={onVoice} />
           <PromptButton icon={<Wand2 />} label="让 AI 问我" onClick={onAskAi} />

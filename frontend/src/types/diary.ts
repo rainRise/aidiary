@@ -171,6 +171,23 @@ export interface DashboardInsights {
   }
 }
 
+export interface CareProgress {
+  active_days: number
+  protected_streak: number
+  shield_balance: number
+  shielded_days: number
+  weekly_goal: number
+  weekly_active_count: number
+  weekly_completed: boolean
+  week_start: string
+  today_status: 'ACTIVE' | 'REST' | 'SHIELDED' | 'MISSED' | 'PENDING' | string
+  recent_statuses: Array<{
+    date: string
+    status: 'ACTIVE' | 'REST' | 'SHIELDED' | 'MISSED' | 'PENDING' | string
+  }>
+  message: string
+}
+
 export interface GrowthDailyInsight {
   date: string
   primary_emotion?: string
