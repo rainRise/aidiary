@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useDiaryStore } from '@/store/diaryStore'
 import { toast } from '@/components/ui/toast'
-import { PenLine, Calendar, MessageCircle, Star, Smile, CloudSun, AlertCircle, Trophy, HeartHandshake, HelpCircle, Sparkles, Battery, Heart, Angry, Frown, PartyPopper, ChevronRight, RefreshCw, ShieldCheck, Target, Gift, Mic, Wand2, Flame, Sprout } from 'lucide-react'
+import { PenLine, Calendar, MessageCircle, Star, Smile, CloudSun, AlertCircle, Trophy, HeartHandshake, HelpCircle, Sparkles, Battery, Heart, Angry, Frown, PartyPopper, ChevronRight, RefreshCw, ShieldCheck, Target, Gift, Mic, Wand2, Sprout } from 'lucide-react'
 import RichTextEditor from '@/components/editor/RichTextEditor'
 import { aiService } from '@/services/ai.service'
 import { diaryService } from '@/services/diary.service'
@@ -759,21 +759,28 @@ function HeartLightCheckin({
 }) {
   return (
     <section className="relative overflow-hidden rounded-[28px] border border-[#eadfd8] bg-white/82 shadow-[0_18px_54px_rgba(122,83,73,0.1)]">
-      <div className="absolute inset-y-0 left-0 hidden w-32 overflow-hidden bg-[linear-gradient(160deg,#fff4e8,#ffe7ee_55%,#f2edff)] sm:block">
-        <div className="absolute left-6 top-10 h-20 w-20 rounded-full bg-white/45 blur-xl" />
-        <div className="absolute left-7 top-14 flex h-20 w-20 items-end justify-center rounded-[30px] border border-white/60 bg-white/30 pb-4 shadow-inner">
-          <span className="relative flex h-10 w-7 items-center justify-center rounded-b-lg rounded-t-2xl bg-[#fff7df] shadow-[0_0_24px_rgba(250,190,86,0.55)]">
-            <Flame className="h-6 w-6 text-amber-400" />
-          </span>
-        </div>
+      <div className="absolute inset-y-0 left-0 hidden w-36 overflow-hidden bg-[linear-gradient(160deg,#fff4e8,#ffe7ee_55%,#f2edff)] sm:block">
+        <div className="absolute left-5 top-10 h-24 w-24 rounded-full bg-white/45 blur-xl" />
+        <img
+          src="/xindeng.png"
+          alt="心灯"
+          className="absolute left-5 top-12 h-24 w-24 object-contain drop-shadow-[0_18px_28px_rgba(214,135,116,0.2)]"
+        />
         <Sparkles className="absolute left-6 top-6 h-4 w-4 text-white" />
         <Sparkles className="absolute right-5 top-11 h-3 w-3 text-[#f2a7a0]" />
       </div>
 
-      <div className="relative p-5 sm:pl-36">
+      {isCompleted && (
+        <div className="pointer-events-none absolute right-6 top-6 z-10 flex animate-[heartLightPop_0.5s_ease-out] flex-col items-center rounded-3xl border border-white/70 bg-white/86 px-5 py-4 text-center shadow-[0_18px_46px_rgba(163,103,95,0.18)] backdrop-blur">
+          <img src="/star.png" alt="今日已点亮" className="h-16 w-16 object-contain drop-shadow-[0_10px_20px_rgba(233,172,91,0.28)]" />
+          <span className="mt-1 text-sm font-bold text-[#c57668]">今日已点亮</span>
+        </div>
+      )}
+
+      <div className="relative p-5 sm:pl-40">
         <div className="mb-4 flex items-start gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#fff4df] text-amber-400 shadow-inner sm:hidden">
-            <Flame className="h-6 w-6" />
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#fff4df] shadow-inner sm:hidden">
+            <img src="/xindeng.png" alt="心灯" className="h-12 w-12 object-contain" />
           </span>
           <div>
             <div className="flex items-center gap-2">
