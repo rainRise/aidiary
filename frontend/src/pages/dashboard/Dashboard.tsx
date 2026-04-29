@@ -51,6 +51,43 @@ type DashboardStats = {
 }
 
 const negativeEmotionPattern = /焦虑|压力|低落|消沉|疲惫|难过|紧张|担忧|烦躁|崩溃|痛苦|失落|孤独|无助/
+type EmotionMapMeta = {
+  valence: number
+  arousal: number
+  category: 'positive' | 'calm' | 'negative' | 'tension' | 'neutral'
+  gradient: string
+  textColor: string
+}
+
+const EMOTION_MAP_RULES: Array<{ patterns: string[]; meta: EmotionMapMeta }> = [
+  { patterns: ['开心', 'happy', 'joy', 'joyful', 'excited', '兴奋'], meta: { valence: 86, arousal: 78, category: 'positive', gradient: 'from-[#f8b84e] to-[#ffd77d]', textColor: 'text-white' } },
+  { patterns: ['成就', 'achievement', 'accomplished', '成长', '自豪'], meta: { valence: 82, arousal: 68, category: 'positive', gradient: 'from-[#8f78e8] to-[#c6b4ff]', textColor: 'text-white' } },
+  { patterns: ['满足', 'satisfied', 'content', '感动', 'touched'], meta: { valence: 78, arousal: 42, category: 'calm', gradient: 'from-[#79d2aa] to-[#a7e8ce]', textColor: 'text-white' } },
+  { patterns: ['平静', 'calm', 'peaceful', 'relaxed', '放松', '轻松'], meta: { valence: 66, arousal: 28, category: 'calm', gradient: 'from-[#78cbd5] to-[#a9e6ed]', textColor: 'text-white' } },
+  { patterns: ['期待', 'expectant', '期待感', 'hope'], meta: { valence: 64, arousal: 62, category: 'positive', gradient: 'from-[#b8d875] to-[#d8efa4]', textColor: 'text-white' } },
+  { patterns: ['焦虑', 'anxious', 'anxiety', '紧张', '压力', '担忧', 'worried'], meta: { valence: 22, arousal: 76, category: 'tension', gradient: 'from-[#f2978d] to-[#ffc0b9]', textColor: 'text-white' } },
+  { patterns: ['烦躁', 'angry', '愤怒', '生气', 'irritated'], meta: { valence: 18, arousal: 84, category: 'tension', gradient: 'from-[#df6b63] to-[#f9a098]', textColor: 'text-white' } },
+  { patterns: ['低落', 'sad', 'sadness', '难过', '悲伤', '失落', '孤独'], meta: { valence: 20, arousal: 30, category: 'negative', gradient: 'from-[#8ba1d8] to-[#bac8f3]', textColor: 'text-white' } },
+  { patterns: ['疲惫', 'exhausted', 'tired', '困', '倦怠'], meta: { valence: 28, arousal: 18, category: 'negative', gradient: 'from-[#b9a7d8] to-[#d7c8ee]', textColor: 'text-white' } },
+  { patterns: ['一般', 'neutral', '普通', '平稳'], meta: { valence: 50, arousal: 46, category: 'neutral', gradient: 'from-[#d8c7b7] to-[#eaded2]', textColor: 'text-stone-700' } },
+]
+
+const DEFAULT_EMOTION_META: EmotionMapMeta = {
+  valence: 52,
+  arousal: 48,
+  category: 'neutral',
+  gradient: 'from-[#d8c7b7] to-[#eaded2]',
+  textColor: 'text-stone-700',
+}
+
+function getEmotionMapMeta(tag: string, label: string): EmotionMapMeta {
+  const source = `${tag} ${label}`.toLowerCase()
+  return EMOTION_MAP_RULES.find((rule) => rule.patterns.some((pattern) => source.includes(pattern.toLowerCase())))?.meta || DEFAULT_EMOTION_META
+}
+
+function clampPercent(value: number) {
+  return Math.max(8, Math.min(92, value))
+}
 
 function normalizeEmotionTag(tag?: string) {
   return (tag || '').trim().toLowerCase()
@@ -664,7 +701,7 @@ function EmotionInsightSection({
               <h2 className="text-xl font-bold text-stone-800">情绪分布</h2>
               <span className="text-sm text-stone-400">近30天</span>
             </div>
-            <p className="mt-1 text-sm text-stone-400">气泡大小代表出现频率</p>
+            <p className="mt-1 text-sm text-stone-400">横轴表示正负倾向，纵轴表示能量高低</p>
           </div>
           <button
             onClick={() => onNavigate('/emotion')}
@@ -673,30 +710,45 @@ function EmotionInsightSection({
             进入情绪星图
           </button>
         </div>
-        <div className="relative min-h-[255px] overflow-hidden rounded-[24px] bg-[linear-gradient(135deg,#fffaf7,#fdf3ef)] p-5">
-          <div className="flex min-h-[220px] flex-wrap items-center justify-center gap-4">
+        <div className="relative min-h-[315px] overflow-hidden rounded-[24px] border border-[#f1e4dd] bg-[linear-gradient(135deg,#fffaf7,#fbf4f0_45%,#f8f5ff)] p-5">
+          <div className="pointer-events-none absolute inset-x-8 top-1/2 h-px bg-[#eadfd8]" />
+          <div className="pointer-events-none absolute inset-y-8 left-1/2 w-px bg-[#eadfd8]" />
+          <div className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-xs font-semibold text-stone-400">负面</div>
+          <div className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-xs font-semibold text-stone-400">正面</div>
+          <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 text-xs font-semibold text-stone-400">高能量</div>
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-xs font-semibold text-stone-400">低能量</div>
+          <div className="pointer-events-none absolute left-5 top-4 rounded-full bg-white/62 px-2.5 py-1 text-[11px] font-medium text-stone-400 shadow-sm">大小=次数</div>
+          <div className="relative h-[275px]">
             {displayStats.map((item, index) => {
-              const size = 84 + (item.count / maxCount) * 68
-              const palette = [
-                'from-[#74d6b0] to-[#9fe5cc]',
-                'from-[#f7b84b] to-[#ffd67d]',
-                'from-[#a98bef] to-[#c9b5ff]',
-                'from-[#7fcbd5] to-[#a8e4ea]',
-                'from-[#f59b8f] to-[#ffc0b8]',
-                'from-[#b8d875] to-[#d4ed9c]',
-                'from-[#f3a6ce] to-[#ffd0e6]',
-              ][index % 7]
+              const label = getEmotionDisplayLabel(t, item.tag)
+              const meta = getEmotionMapMeta(item.tag, label)
+              const size = 58 + (item.count / maxCount) * 62
+              const jitterX = ((index % 3) - 1) * 3
+              const jitterY = (Math.floor(index / 3) % 2 === 0 ? -1 : 1) * (index % 2) * 3
+              const left = clampPercent(meta.valence + jitterX)
+              const top = clampPercent(100 - meta.arousal + jitterY)
+              const isDominant = index === 0
               return (
                 <button
                   key={item.tag}
-                  className={`flex shrink-0 flex-col items-center justify-center rounded-full bg-gradient-to-br ${palette} text-white shadow-[0_14px_34px_rgba(102,75,62,0.13)] transition-all hover:-translate-y-1`}
-                  style={{ width: size, height: size }}
+                  title={`${label}：${item.count}次，${meta.category}`}
+                  className={`absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full bg-gradient-to-br ${meta.gradient} ${meta.textColor} shadow-[0_14px_34px_rgba(102,75,62,0.15)] transition-all hover:z-20 hover:scale-105 ${
+                    isDominant ? 'ring-4 ring-white ring-offset-4 ring-offset-[#f7c9c0]' : ''
+                  }`}
+                  style={{ width: size, height: size, left: `${left}%`, top: `${top}%` }}
                 >
-                  <span className="text-base font-bold">{getEmotionDisplayLabel(t, item.tag)}</span>
-                  <span className="mt-1 text-sm font-semibold opacity-90">{item.count}次</span>
+                  <span className="text-sm font-bold leading-tight">{label}</span>
+                  <span className="mt-1 text-xs font-semibold opacity-90">{item.count}次</span>
+                  {isDominant && <span className="mt-1 rounded-full bg-white/26 px-2 py-0.5 text-[10px] font-bold">主导</span>}
                 </button>
               )
             })}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-stone-400">
+            <span className="rounded-full bg-[#fff7f0] px-2.5 py-1">右上：积极且高能量</span>
+            <span className="rounded-full bg-[#fff7f0] px-2.5 py-1">右下：积极且低能量</span>
+            <span className="rounded-full bg-[#fff7f0] px-2.5 py-1">左上：压力/紧张</span>
+            <span className="rounded-full bg-[#fff7f0] px-2.5 py-1">左下：低落/疲惫</span>
           </div>
         </div>
       </div>
