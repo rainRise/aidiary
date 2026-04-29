@@ -762,8 +762,10 @@ function HeartLightCheckin({
       <div className="absolute inset-y-0 left-0 hidden w-36 overflow-hidden bg-[linear-gradient(160deg,#fff4e8,#ffe7ee_55%,#f2edff)] sm:block">
         <div className="absolute left-5 top-10 h-24 w-24 rounded-full bg-white/45 blur-xl" />
         <img
-          src="/xindeng.png"
+          src="/xindeng-small.png"
           alt="心灯"
+          width={96}
+          height={96}
           className="absolute left-5 top-12 h-24 w-24 object-contain drop-shadow-[0_18px_28px_rgba(214,135,116,0.2)]"
         />
         <Sparkles className="absolute left-6 top-6 h-4 w-4 text-white" />
@@ -771,16 +773,18 @@ function HeartLightCheckin({
       </div>
 
       {isCompleted && (
-        <div className="pointer-events-none absolute right-6 top-6 z-10 flex animate-[heartLightPop_0.5s_ease-out] flex-col items-center rounded-3xl border border-white/70 bg-white/86 px-5 py-4 text-center shadow-[0_18px_46px_rgba(163,103,95,0.18)] backdrop-blur">
-          <img src="/star.png" alt="今日已点亮" className="h-16 w-16 object-contain drop-shadow-[0_10px_20px_rgba(233,172,91,0.28)]" />
-          <span className="mt-1 text-sm font-bold text-[#c57668]">今日已点亮</span>
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 animate-[heartLightCenterPop_0.5s_ease-out] flex-col items-center text-center">
+          <img src="/star-small.png" alt="今日已点亮" width={96} height={96} className="h-24 w-24 object-contain drop-shadow-[0_18px_28px_rgba(233,172,91,0.34)]" />
+          <span className="mt-1 rounded-full bg-white/78 px-4 py-1.5 text-sm font-bold text-[#c57668] shadow-[0_10px_24px_rgba(163,103,95,0.12)] backdrop-blur">
+            今日已点亮
+          </span>
         </div>
       )}
 
       <div className="relative p-5 sm:pl-40">
         <div className="mb-4 flex items-start gap-3">
           <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#fff4df] shadow-inner sm:hidden">
-            <img src="/xindeng.png" alt="心灯" className="h-12 w-12 object-contain" />
+            <img src="/xindeng-small.png" alt="心灯" width={48} height={48} className="h-12 w-12 object-contain" />
           </span>
           <div>
             <div className="flex items-center gap-2">

@@ -248,3 +248,18 @@ input:focus, textarea:focus {
     transform: translateY(0) scale(1);
   }
 }
+
+@keyframes heartLightCenterPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10px)) scale(0.86);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, calc(-50% - 2px)) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
