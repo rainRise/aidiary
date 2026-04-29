@@ -1,10 +1,12 @@
 """
 AI分析相关的API端点
 """
+import logging
 from typing import Optional
 from datetime import timedelta, date
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc
 
@@ -32,6 +34,7 @@ from app.services.rag_service import diary_rag_service
 from app.services.qdrant_memory_service import qdrant_diary_memory_service
 
 router = APIRouter(prefix="/ai", tags=["AI分析"])
+logger = logging.getLogger(__name__)
 
 
 def _build_compact_evidence_text(evidence: list[dict], limit: int = 10) -> str:
@@ -647,7 +650,7 @@ async def analyze_diary(
         # 持久化分析结果（供“查看分析结果”直接读取，避免重复运行）
         try:
             target_diary = anchor_diary or diaries_sorted[-1]
-            analysis_result_for_save = dict(result)
+            analysis_result_for_save = jsonable_encoder(result)
             analysis_result_for_save.setdefault("metadata", {})
             analysis_result_for_save["metadata"]["saved_for_diary_id"] = target_diary.id
 
@@ -672,16 +675,18 @@ async def analyze_diary(
             result.setdefault("metadata", {})
             result["metadata"]["result_save_warning"] = str(save_result_err)
 
-        return result
+        return jsonable_encoder(result)
 
     except HTTPException:
         raise
     except (httpx.HTTPStatusError, httpx.TimeoutException, httpx.TransportError) as e:
+        logger.exception("AI provider request failed during /ai/analyze")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"AI服务暂时不可用，请稍后重试: {str(e)}"
         )
     except Exception as e:
+        logger.exception("Unexpected error during /ai/analyze")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"分析失败: {str(e)}"

@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { aiService } from '@/services/ai.service'
 import { Loading } from '@/components/common/Loading'
-import type { IcebergAnalysisResponse } from '@/types/analysis'
-import { Sparkles, ChevronDown, ChevronUp, Waves, Droplets, Brain, KeyRound, Heart, Mail } from 'lucide-react'
+import type { EvidenceItem, IcebergAnalysisResponse } from '@/types/analysis'
+import { Sparkles, ChevronDown, ChevronUp, Waves, Droplets, Brain, KeyRound, Heart, Mail, Link2, ShieldCheck, HelpCircle, FileText } from 'lucide-react'
 
 // ── 冰山层级配置 ──
 const LAYERS = [
@@ -13,38 +13,38 @@ const LAYERS = [
     labelKey: 'icebergOverview.layers.behavior',
     sublabelKey: 'icebergOverview.layers.behaviorSub',
     icon: Waves,
-    gradient: 'linear-gradient(135deg, #e0f2fe, #bae6fd)',
-    border: 'border-sky-200',
-    textColor: 'text-sky-700',
-    tagBg: 'bg-sky-50 text-sky-600 border-sky-100',
+    gradient: 'linear-gradient(135deg, #dff5ff 0%, #c7dcff 100%)',
+    border: 'border-sky-200/70',
+    textColor: 'text-sky-800',
+    tagBg: 'bg-white/24 text-sky-700 border-white/35',
   },
   {
     key: 'emotion',
     labelKey: 'icebergOverview.layers.emotion',
     sublabelKey: 'icebergOverview.layers.emotionSub',
     icon: Droplets,
-    gradient: 'linear-gradient(135deg, #bfdbfe, #93c5fd)',
-    border: 'border-blue-200',
-    textColor: 'text-blue-700',
-    tagBg: 'bg-blue-50 text-blue-600 border-blue-100',
+    gradient: 'linear-gradient(135deg, #cfe7ff 0%, #a9c9ff 100%)',
+    border: 'border-blue-200/70',
+    textColor: 'text-blue-800',
+    tagBg: 'bg-white/24 text-blue-700 border-white/35',
   },
   {
     key: 'cognition',
     labelKey: 'icebergOverview.layers.cognition',
     sublabelKey: 'icebergOverview.layers.cognitionSub',
     icon: Brain,
-    gradient: 'linear-gradient(135deg, #a5b4fc, #818cf8)',
-    border: 'border-indigo-200',
-    textColor: 'text-indigo-700',
-    tagBg: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+    gradient: 'linear-gradient(135deg, #aebdff 0%, #8298f7 100%)',
+    border: 'border-indigo-200/70',
+    textColor: 'text-white',
+    tagBg: 'bg-white/18 text-white border-white/24',
   },
   {
     key: 'belief',
     labelKey: 'icebergOverview.layers.belief',
     sublabelKey: 'icebergOverview.layers.beliefSub',
     icon: KeyRound,
-    gradient: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-    border: 'border-violet-300',
+    gradient: 'linear-gradient(135deg, #7f8ff6 0%, #6675e8 50%, #7187f6 100%)',
+    border: 'border-violet-300/50',
     textColor: 'text-violet-100',
     tagBg: 'bg-violet-900/30 text-violet-200 border-violet-500/30',
   },
@@ -53,8 +53,8 @@ const LAYERS = [
     labelKey: 'icebergOverview.layers.yearning',
     sublabelKey: 'icebergOverview.layers.yearningSub',
     icon: Heart,
-    gradient: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
-    border: 'border-purple-400',
+    gradient: 'linear-gradient(135deg, #6578ea 0%, #6e61d8 55%, #7b66e8 100%)',
+    border: 'border-purple-400/50',
     textColor: 'text-amber-100',
     tagBg: 'bg-purple-900/30 text-amber-200 border-amber-400/30',
   },
@@ -78,53 +78,125 @@ function DiveIndicator({ text }: { text: string }) {
   )
 }
 
+function uniqueByDateEvidence(items: EvidenceItem[]) {
+  const seen = new Set<string>()
+  return items.filter((item) => {
+    const key = `${item.diary_date}-${item.diary_id}-${item.snippet}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function getLayerEvidence(layerKey: string, data: any, allEvidence: EvidenceItem[]) {
+  const evidence = uniqueByDateEvidence(allEvidence || [])
+  if (layerKey === 'behavior') {
+    const dates = new Set<string>((data?.patterns || []).flatMap((p: any) => p.evidence_dates || []))
+    return evidence.filter((item) => dates.size === 0 || dates.has(item.diary_date)).slice(0, 4)
+  }
+  if (layerKey === 'emotion') {
+    const dates = new Set<string>((data?.turning_points || []).map((tp: any) => tp.date))
+    return evidence.filter((item) => dates.size === 0 || dates.has(item.diary_date)).slice(0, 4)
+  }
+  if (layerKey === 'cognition') {
+    const snippets = (data?.thought_patterns || []).map((tp: any) => String(tp.evidence_snippet || '')).filter(Boolean)
+    return evidence.filter((item) => snippets.length === 0 || snippets.some((s: string) => item.snippet.includes(s.slice(0, 12)) || s.includes(item.snippet.slice(0, 12)))).slice(0, 4)
+  }
+  return evidence.slice(0, 4)
+}
+
+function getConfidenceLabel(evidenceCount: number, index: number) {
+  if (evidenceCount >= 6 && index <= 2) return '较高'
+  if (evidenceCount >= 3) return '中等'
+  return '偏低'
+}
+
+function getLayerInference(layerKey: string, data: any) {
+  if (layerKey === 'behavior') return data?.patterns?.[0]?.behavior || data?.summary
+  if (layerKey === 'emotion') return data?.emotion_flow?.[0]?.description || data?.summary
+  if (layerKey === 'cognition') return data?.thought_patterns?.[0]?.pattern || data?.summary
+  if (layerKey === 'belief') return data?.self_narrative || data?.core_beliefs?.[0]?.belief || data?.summary
+  return data?.life_energy || data?.yearnings?.[0]?.yearning || data?.summary
+}
+
+function getUncertainty(layerKey: string) {
+  const map: Record<string, string> = {
+    behavior: '行为模式来自日记中的重复线索，不代表所有场景下都会如此。',
+    emotion: '情绪判断会受到记录时机和表达方式影响，适合结合当天事件一起看。',
+    cognition: '认知层是基于文本线索的推断，不能替代你自己的真实感受。',
+    belief: '信念层属于深层假设，系统会保持保守，不把它当作绝对结论。',
+    yearning: '渴望层更接近方向性理解，需要通过后续记录持续验证。',
+  }
+  return map[layerKey] || '该观察用于自我觉察，不作为诊断结论。'
+}
+
 // ── 冰山卡片组件 ──
 function IcebergCard({
   layer,
   data,
   index,
   visible,
+  evidence,
   t,
 }: {
   layer: typeof LAYERS[number]
   data: any
   index: number
   visible: boolean
+  evidence: EvidenceItem[]
   t: (key: string, opts?: any) => string
 }) {
   const [expanded, setExpanded] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const isDeep = index >= 3
-  const summaryColor = isDeep ? 'text-white/90' : 'text-stone-600'
-  const sublabelColor = isDeep ? 'text-white/50' : 'text-stone-400'
+  const summaryColor = index >= 2 ? 'text-white/92' : 'text-slate-700'
+  const sublabelColor = index >= 2 ? 'text-white/62' : 'text-slate-500/70'
+  const layerEvidence = getLayerEvidence(layer.key, data, evidence)
+  const confidence = getConfidenceLabel(evidence.length, index)
 
   if (!data?.summary) return null
 
   return (
     <div
       ref={ref}
-      className={`rounded-2xl border ${layer.border} overflow-hidden transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+      className={`rounded-[28px] border ${layer.border} overflow-hidden shadow-[0_22px_60px_rgba(49,65,138,0.18)] transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
       style={{ background: layer.gradient, transitionDelay: `${index * 120}ms` }}
     >
-      <div className="p-5">
+      <div className="relative overflow-hidden p-6">
+        <div className="pointer-events-none absolute right-5 top-5 h-24 w-24 rounded-full bg-white/12 blur-xl" />
+        <div className="pointer-events-none absolute -right-4 bottom-3 h-28 w-28 rounded-full border border-white/18" />
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
-            <layer.icon className={`w-4.5 h-4.5 ${layer.textColor}`} />
+            <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/35 bg-white/16 shadow-inner">
+              <layer.icon className={`w-5 h-5 ${layer.textColor}`} />
+            </span>
             <div>
-              <h3 className={`text-sm font-bold ${layer.textColor}`}>{t(layer.labelKey)}</h3>
-              <p className={`text-xs ${sublabelColor}`}>{t(layer.sublabelKey)}</p>
+              <h3 className={`text-xl font-bold ${layer.textColor}`}>{t(layer.labelKey)}</h3>
+              <p className={`mt-0.5 text-sm ${sublabelColor}`}>{t(layer.sublabelKey)}</p>
             </div>
           </div>
           <button
             onClick={() => setExpanded(!expanded)}
-            className={`text-xs flex items-center gap-1 ${isDeep ? 'text-white/60 hover:text-white/90' : 'text-stone-400 hover:text-stone-600'} transition-colors`}
+            className={`relative text-xs flex items-center gap-1 ${index >= 2 ? 'text-white/70 hover:text-white' : 'text-slate-500 hover:text-slate-700'} transition-colors`}
           >
             {expanded ? t('icebergOverview.collapse') : t('icebergOverview.expand')}
             {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         </div>
 
-        <p className={`text-sm leading-7 ${summaryColor}`}>{data.summary}</p>
+        <p className={`relative mt-5 text-[15px] leading-8 ${summaryColor}`}>{data.summary}</p>
+
+        <div className="relative mt-5 grid grid-cols-3 gap-3">
+          <span className={`inline-flex items-center justify-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-semibold ${layer.tagBg}`}>
+            <FileText className="h-3.5 w-3.5" /> 基于 {Math.max(evidence.length, 1)} 篇日记
+          </span>
+          <span className={`inline-flex items-center justify-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-semibold ${layer.tagBg}`}>
+            <Link2 className="h-3.5 w-3.5" /> 证据 {layerEvidence.length || evidence.length} 条
+          </span>
+          <span className={`inline-flex items-center justify-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-semibold ${layer.tagBg}`}>
+            <ShieldCheck className="h-3.5 w-3.5" /> 置信度：{confidence}
+          </span>
+        </div>
 
         {/* 情绪层特有：情绪色块条 */}
         {layer.key === 'emotion' && data.emotion_flow?.length > 0 && (
@@ -150,7 +222,40 @@ function IcebergCard({
 
       {/* 展开详情 */}
       {expanded && (
-        <div className={`px-5 pb-5 pt-2 border-t ${isDeep ? 'border-white/10' : 'border-black/5'}`}>
+        <div className={`mx-3 mb-3 rounded-[24px] border bg-white/88 px-5 pb-5 pt-4 shadow-inner ${isDeep ? 'border-white/20' : 'border-white/80'}`}>
+          <div className="mb-5 flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-indigo-500" />
+            <h4 className="text-sm font-bold text-slate-700">证据链 / 为什么这样判断</h4>
+          </div>
+          <div className="relative mb-5 space-y-3 pl-4">
+            <div className="absolute bottom-3 left-[5px] top-2 w-px bg-indigo-100" />
+            {(layerEvidence.length ? layerEvidence : evidence.slice(0, 3)).map((item, i) => (
+              <div key={`${item.diary_id}-${i}`} className="relative rounded-2xl bg-indigo-50/70 px-4 py-3">
+                <span className="absolute -left-[19px] top-4 h-3 w-3 rounded-full border-2 border-white bg-indigo-400 shadow" />
+                <p className="text-xs font-semibold text-indigo-500">
+                  {item.diary_date} 《{item.title || '未命名日记'}》
+                </p>
+                <p className="mt-1 text-sm leading-6 text-slate-600">“{item.snippet}”</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mb-4 rounded-2xl border border-violet-100 bg-violet-50/70 p-4">
+            <div className="mb-2 flex items-center gap-2 text-sm font-bold text-violet-600">
+              <Sparkles className="h-4 w-4" /> AI 推理
+            </div>
+            <p className="text-sm leading-7 text-slate-600">
+              {getLayerInference(layer.key, data)}
+            </p>
+          </div>
+
+          <div className="mb-5 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+            <div className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-600">
+              <HelpCircle className="h-4 w-4" /> 不确定性
+            </div>
+            <p className="text-sm leading-7 text-slate-500">{getUncertainty(layer.key)}</p>
+          </div>
+
           {/* 行为层：模式列表 */}
           {layer.key === 'behavior' && data.patterns?.length > 0 && (
             <div className="space-y-2.5">
@@ -203,15 +308,15 @@ function IcebergCard({
             <div className="space-y-3">
               {data.core_beliefs?.map((b: any, i: number) => (
                 <div key={i}>
-                  <p className="text-sm text-violet-100 font-medium">「{b.belief}」</p>
-                  {b.origin_hint && <p className="text-xs text-violet-300/60 mt-0.5">{t('icebergOverview.possibleOrigin')}{b.origin_hint}</p>}
-                  {b.impact && <p className="text-xs text-violet-300/60 mt-0.5">{t('icebergOverview.impact')}{b.impact}</p>}
+                  <p className="text-sm text-violet-700 font-medium">「{b.belief}」</p>
+                  {b.origin_hint && <p className="text-xs text-violet-500/70 mt-0.5">{t('icebergOverview.possibleOrigin')}{b.origin_hint}</p>}
+                  {b.impact && <p className="text-xs text-violet-500/70 mt-0.5">{t('icebergOverview.impact')}{b.impact}</p>}
                 </div>
               ))}
               {data.self_narrative && (
-                <div className="pt-2 border-t border-white/10">
-                  <p className="text-xs text-violet-300/50 mb-1">{t('icebergOverview.selfNarrative')}</p>
-                  <p className="text-sm text-violet-100 italic">"{data.self_narrative}"</p>
+                <div className="pt-2 border-t border-violet-100">
+                  <p className="text-xs text-violet-400 mb-1">{t('icebergOverview.selfNarrative')}</p>
+                  <p className="text-sm text-violet-700 italic">"{data.self_narrative}"</p>
                 </div>
               )}
             </div>
@@ -222,14 +327,14 @@ function IcebergCard({
             <div className="space-y-3">
               {data.yearnings?.map((y: any, i: number) => (
                 <div key={i}>
-                  <p className="text-sm text-amber-200 font-medium">{y.yearning}</p>
-                  {y.connection && <p className="text-xs text-purple-300/60 mt-0.5">{y.connection}</p>}
+                  <p className="text-sm text-purple-700 font-medium">{y.yearning}</p>
+                  {y.connection && <p className="text-xs text-purple-500/70 mt-0.5">{y.connection}</p>}
                 </div>
               ))}
               {data.life_energy && (
-                <div className="pt-2 border-t border-white/10">
-                  <p className="text-xs text-purple-300/50 mb-1">{t('icebergOverview.lifeEnergy')}</p>
-                  <p className="text-sm text-amber-200">{data.life_energy}</p>
+                <div className="pt-2 border-t border-purple-100">
+                  <p className="text-xs text-purple-400 mb-1">{t('icebergOverview.lifeEnergy')}</p>
+                  <p className="text-sm text-purple-700">{data.life_energy}</p>
                 </div>
               )}
             </div>
@@ -379,6 +484,7 @@ export default function AnalysisOverview() {
                   data={layerDataMap[layer.key]}
                   index={index}
                   visible={cardsVisible}
+                  evidence={result.evidence || []}
                   t={t}
                 />
                 {index < LAYERS.length - 1 && layerDataMap[layer.key]?.summary && (

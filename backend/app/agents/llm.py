@@ -100,7 +100,9 @@ class DeepSeekClient:
             "model": self.model,
             "messages": messages,
             "temperature": temperature,
-            "max_tokens": max_tokens,
+            # Reasoning-capable兼容模型可能先输出 reasoning_content。
+            # max_tokens 太低时会出现 finish_reason=length 且 content 为空，因此给 JSON/分析任务留出更稳的输出余量。
+            "max_tokens": max(max_tokens, 3200),
             "stream": False
         }
 

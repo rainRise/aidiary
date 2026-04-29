@@ -1,5 +1,6 @@
 // AI分析结果展示页面 - 温暖柔和心理日记风格
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { aiService } from '@/services/ai.service'
@@ -8,11 +9,117 @@ import { Loading } from '@/components/common/Loading'
 import { toast } from '@/components/ui/toast'
 import type { AnalysisResponse, Diary } from '@/types'
 import { format } from 'date-fns'
-import { Sparkles, Calendar, Snowflake, Heart, FileText } from 'lucide-react'
+import { Sparkles, Calendar, Snowflake, Heart, FileText, Link2, ShieldCheck, HelpCircle, Trophy, MessageCircle, CheckCircle2 } from 'lucide-react'
 import { getEmotionDisplayLabel } from '@/utils/emotionLabels'
 
 const warmBg = { background: 'linear-gradient(160deg, #fff8f5 0%, #fdf4ff 60%, #f5f3ff 100%)' }
 const gradientBtn = { background: 'linear-gradient(135deg, #fb7185, #c084fc)' }
+
+function ReflectionRewardCard({ points }: { points: number }) {
+  return (
+    <div className="card-warm overflow-hidden border-amber-100">
+      <div className="flex items-start gap-4 p-5" style={{ background: 'linear-gradient(135deg, rgba(255,247,237,0.96), rgba(250,245,255,0.92))' }}>
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 shadow-inner">
+          <Trophy className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-bold text-stone-700">映光值 +{points}</h3>
+            <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-amber-600">奖励健康行为</span>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-stone-500">
+            这次奖励来自“完成一次 AI 反思”，不是因为情绪更强烈、文字更长或更痛苦。映光值鼓励表达、自我觉察、恢复行动和温和互助。
+          </p>
+          <div className="mt-3 grid gap-2 text-xs text-stone-500 sm:grid-cols-4">
+            <span className="rounded-2xl bg-white/70 px-3 py-2"><CheckCircle2 className="mr-1 inline h-3.5 w-3.5 text-emerald-500" />5秒签到 +5</span>
+            <span className="rounded-2xl bg-white/70 px-3 py-2"><FileText className="mr-1 inline h-3.5 w-3.5 text-rose-400" />记录日记 +10</span>
+            <span className="rounded-2xl bg-white/70 px-3 py-2"><Sparkles className="mr-1 inline h-3.5 w-3.5 text-violet-500" />AI反思 +15</span>
+            <span className="rounded-2xl bg-white/70 px-3 py-2"><MessageCircle className="mr-1 inline h-3.5 w-3.5 text-sky-500" />支持回应 +10</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function EvidenceStyleHeader({ title, subtitle, diaryCount }: { title: string; subtitle: string; diaryCount: number }) {
+  return (
+    <div className="relative overflow-hidden p-5 text-white" style={{ background: 'linear-gradient(135deg, #7185f4, #816fe8)' }}>
+      <div className="absolute right-5 top-5 h-20 w-20 rounded-full bg-white/10 blur-xl" />
+      <div className="relative flex items-center gap-3">
+        <span className="flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-white/14">
+          <Link2 className="h-5 w-5" />
+        </span>
+        <div>
+          <h3 className="text-lg font-bold">{title}</h3>
+          <p className="text-sm text-white/72">{subtitle}</p>
+        </div>
+      </div>
+      <div className="relative mt-4 flex flex-wrap gap-2">
+        <span className="rounded-2xl border border-white/25 bg-white/14 px-3 py-1.5 text-xs font-semibold">基于 {diaryCount} 篇日记</span>
+        <span className="rounded-2xl border border-white/25 bg-white/14 px-3 py-1.5 text-xs font-semibold">证据链展示</span>
+        <span className="rounded-2xl border border-white/25 bg-white/14 px-3 py-1.5 text-xs font-semibold">非诊断结论</span>
+      </div>
+    </div>
+  )
+}
+
+function EvidenceLayerBlock({
+  tone,
+  title,
+  inference,
+  evidence,
+  uncertainty,
+  children,
+}: {
+  tone: 'rose' | 'amber' | 'violet' | 'purple'
+  title: string
+  inference?: string
+  evidence: string[]
+  uncertainty: string
+  children: ReactNode
+}) {
+  const toneClass = {
+    rose: 'border-rose-100 bg-rose-50/60 text-rose-500',
+    amber: 'border-amber-100 bg-amber-50/60 text-amber-600',
+    violet: 'border-violet-100 bg-violet-50/60 text-violet-500',
+    purple: 'border-purple-100 bg-purple-50/60 text-purple-500',
+  }[tone]
+
+  return (
+    <div className={`rounded-3xl border p-4 ${toneClass}`}>
+      <h4 className="mb-3 text-xs font-bold">{title}</h4>
+      <div className="rounded-2xl bg-white/72 p-3">{children}</div>
+      <div className="mt-3 rounded-2xl bg-white/70 p-3">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold">
+          <Link2 className="h-3.5 w-3.5" /> 证据链
+        </div>
+        <div className="space-y-2">
+          {evidence.filter(Boolean).slice(0, 3).map((item, index) => (
+            <p key={index} className="rounded-xl bg-white/78 px-3 py-2 text-xs leading-5 text-stone-500">“{item.length > 82 ? `${item.slice(0, 82)}...` : item}”</p>
+          ))}
+        </div>
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl bg-white/70 p-3">
+          <div className="mb-1 flex items-center gap-2 text-xs font-bold">
+            <Sparkles className="h-3.5 w-3.5" /> AI 推理
+          </div>
+          <p className="text-xs leading-5 text-stone-500">{inference || '基于当前文本线索做保守推断。'}</p>
+        </div>
+        <div className="rounded-2xl bg-white/70 p-3">
+          <div className="mb-1 flex items-center gap-2 text-xs font-bold">
+            <HelpCircle className="h-3.5 w-3.5" /> 不确定性
+          </div>
+          <p className="text-xs leading-5 text-stone-500">{uncertainty}</p>
+        </div>
+      </div>
+      <div className="mt-3 inline-flex items-center gap-1.5 rounded-2xl bg-white/70 px-3 py-1.5 text-xs font-semibold">
+        <ShieldCheck className="h-3.5 w-3.5" /> 置信度：中等
+      </div>
+    </div>
+  )
+}
 
 export default function AnalysisResult() {
   const { id } = useParams<{ id: string }>()
@@ -119,6 +226,7 @@ export default function AnalysisResult() {
   }
 
   const emotionTags = diary?.emotion_tags ?? []
+  const reflectionPoints = analysis ? 15 : 0
 
   if (isLoading) {
     return (
@@ -255,19 +363,31 @@ export default function AnalysisResult() {
               </div>
             )}
 
+            <ReflectionRewardCard points={reflectionPoints} />
+
             {/* 萨提亚冰山分析 */}
             {analysis.satir_analysis && (
-              <div className="card-warm p-5">
-                <div className="flex items-center gap-2 mb-5">
+              <div className="card-warm overflow-hidden">
+                <EvidenceStyleHeader
+                  title="冰山证据链"
+                  subtitle="先给观察，再说明依据、推理与不确定性"
+                  diaryCount={analysis.metadata?.analyzed_diary_count || 1}
+                />
+                <div className="flex items-center gap-2 mb-5 px-5 pt-5">
                   <Snowflake className="w-4 h-4 text-violet-400" />
                   <h3 className="text-sm font-semibold text-stone-600">{t('analysisResult.satirModel')}</h3>
                   <span className="text-xs text-stone-300 ml-auto">{t('analysisResult.deepPsychAnalysis')}</span>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-4 px-5 pb-5">
                   {/* 情绪层 */}
                   {analysis.satir_analysis.emotion_layer && (
-                    <div className="border-l-3 border-rose-300 pl-4 py-2" style={{ borderLeftWidth: '3px' }}>
-                      <h4 className="text-xs font-semibold text-rose-400 mb-2">{t('analysisResult.layer2Emotion')}</h4>
+                    <EvidenceLayerBlock
+                      tone="rose"
+                      title={t('analysisResult.layer2Emotion')}
+                      inference={analysis.satir_analysis.emotion_layer.emotion_description || analysis.satir_analysis.emotion_layer.underlying_emotion || analysis.satir_analysis.emotion_layer.surface_emotion}
+                      evidence={[diary?.content || '当前日记文本', ...(emotionTags.length ? [`情绪标签：${emotionTags.map((tag) => getEmotionDisplayLabel(t, tag)).join(' / ')}`] : [])]}
+                      uncertainty="单篇分析会受到当天表达方式影响，适合结合长期记录继续验证。"
+                    >
                       <div className="flex flex-wrap gap-4">
                         <div>
                           <p className="text-xs text-stone-300">{t('analysisResult.surfaceEmotion')}</p>
@@ -280,13 +400,18 @@ export default function AnalysisResult() {
                           </div>
                         )}
                       </div>
-                    </div>
+                    </EvidenceLayerBlock>
                   )}
 
                   {/* 认知层 */}
                   {(analysis.satir_analysis.cognitive_layer?.irrational_beliefs?.length ?? 0) > 0 && (
-                    <div className="border-l-3 border-amber-300 pl-4 py-2" style={{ borderLeftWidth: '3px' }}>
-                      <h4 className="text-xs font-semibold text-amber-500 mb-2">{t('analysisResult.layer3Cognition')}</h4>
+                    <EvidenceLayerBlock
+                      tone="amber"
+                      title={t('analysisResult.layer3Cognition')}
+                      inference={analysis.satir_analysis.cognitive_layer!.irrational_beliefs![0]}
+                      evidence={analysis.satir_analysis.cognitive_layer!.automatic_thoughts || [diary?.content || '当前日记文本']}
+                      uncertainty="认知层是从文字里识别出的可能想法，不等于给用户贴标签。"
+                    >
                       <p className="text-xs text-stone-300 mb-1">{t('analysisResult.irrationalBeliefs')}</p>
                       <ul className="space-y-1">
                         {analysis.satir_analysis.cognitive_layer!.irrational_beliefs!.map(
@@ -295,13 +420,18 @@ export default function AnalysisResult() {
                           )
                         )}
                       </ul>
-                    </div>
+                    </EvidenceLayerBlock>
                   )}
 
                   {/* 信念层 */}
                   {(analysis.satir_analysis.belief_layer?.core_beliefs?.length ?? 0) > 0 && (
-                    <div className="border-l-3 border-violet-300 pl-4 py-2" style={{ borderLeftWidth: '3px' }}>
-                      <h4 className="text-xs font-semibold text-violet-400 mb-2">{t('analysisResult.layer4Belief')}</h4>
+                    <EvidenceLayerBlock
+                      tone="violet"
+                      title={t('analysisResult.layer4Belief')}
+                      inference={analysis.satir_analysis.belief_layer!.core_beliefs![0]}
+                      evidence={analysis.satir_analysis.belief_layer!.life_rules || [diary?.content || '当前日记文本']}
+                      uncertainty="信念层属于深层假设，系统只做温和提示，不作为诊断结论。"
+                    >
                       <p className="text-xs text-stone-300 mb-1">{t('analysisResult.coreBeliefs')}</p>
                       <ul className="space-y-1">
                         {analysis.satir_analysis.belief_layer!.core_beliefs!.map(
@@ -310,18 +440,23 @@ export default function AnalysisResult() {
                           )
                         )}
                       </ul>
-                    </div>
+                    </EvidenceLayerBlock>
                   )}
 
                   {/* 存在层 */}
                   {analysis.satir_analysis.core_self_layer?.deepest_desire && (
-                    <div className="border-l-3 border-rose-400 pl-4 py-2" style={{ borderLeftWidth: '3px' }}>
-                      <h4 className="text-xs font-semibold text-rose-400 mb-2">{t('analysisResult.layer5Existence')}</h4>
+                    <EvidenceLayerBlock
+                      tone="purple"
+                      title={t('analysisResult.layer5Existence')}
+                      inference={analysis.satir_analysis.core_self_layer.deepest_desire}
+                      evidence={analysis.satir_analysis.core_self_layer.universal_needs || [analysis.satir_analysis.core_self_layer.life_energy || '生命力方向']}
+                      uncertainty="存在层更像成长方向，需要通过持续记录逐步确认。"
+                    >
                       <p className="text-xs text-stone-300 mb-1">{t('analysisResult.deepDesire')}</p>
                       <p className="text-sm text-stone-600 font-medium">
                         {analysis.satir_analysis.core_self_layer.deepest_desire}
                       </p>
-                    </div>
+                    </EvidenceLayerBlock>
                   )}
                 </div>
               </div>
